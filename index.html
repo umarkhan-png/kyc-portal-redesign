@@ -239,7 +239,7 @@ function dial(){
 /* ---------------- OPEN LEAD WORKSPACE ---------------- */
 function openLead(id){
   cur=LEADS.find(l=>l.id===id);
-  if(!st[id]) st[id]={stage:'contacting',profile:'',outcome:'',cdReason:'',cbWhen:'',tentative:false,q1:'',q2:'',lastCallSecs:0,docReq:'',reason:'',notes:'',basic:{},docs:{},verified:false};
+  if(!st[id]) st[id]={stage:'contacting',profile:'',outcome:'',cdReason:'',cbWhen:'',tentative:false,q1:'',q2:'',lastCallSecs:0,editing:false,docReq:'',reason:'',notes:'',basic:{},docs:{},verified:false};
   document.getElementById('ttl').textContent=cur.name;
   document.getElementById('crumb').textContent='· '+cur.id+' · '+cur.phone;
   renderWorkspace();
@@ -320,48 +320,9 @@ function renderFlow(){
       ${routeNote(isType?oc:'')}
     </div></div>`;
 
-  // STEP 2 — details + docs (only for Retailer)
+  // STEP 2 — profile details: view → edit → approve (only for Retailer)
   if(s.profile==='Retailer'){
-    html+=`<div class="card"><div class="hd"><span class="snum">2</span> Details &amp; Documents <span class="pill blue">collected once</span> ${fix(5,'Basic details (shop name, address, PAN, Aadhaar front+back) captured HERE — no “Required” errors later')}</div>
-      <div class="bd">
-        <b style="font-size:12px;color:var(--mut)">BASIC DETAILS</b>
-        <div class="grid2" style="margin:10px 0 4px">
-          <div class="field"><label class="req">Shop name</label><input value="${s.basic.shop||''}" oninput="setBasic('shop',this.value)" placeholder="e.g. Khan Agro Centre"></div>
-          <div class="field"><label class="req">PAN number</label><input value="${s.basic.pan||''}" oninput="setBasic('pan',this.value)" placeholder="ABCDE1234F"></div>
-        </div>
-        <div class="field" style="margin-bottom:10px"><label class="req">Shop address</label><input value="${s.basic.addr||''}" oninput="setBasic('addr',this.value)" placeholder="Full address"></div>
-        <div class="grid3">
-          <div class="field"><label class="req">State ${fix(8,'Full 28 states + 8 UTs incl. Jammu & Kashmir and Ladakh')}</label>
-            <select onchange="setBasic('state',this.value)">${['<option value="">— Select —</option>'].concat(STATES.map(x=>`<option ${s.basic.state===x?'selected':''}>${x}</option>`)).join('')}</select></div>
-          <div class="field"><label>City</label><input value="${s.basic.city||''}" oninput="setBasic('city',this.value)"></div>
-          <div class="field"><label>Pincode</label><input value="${s.basic.pin||''}" oninput="setBasic('pin',this.value)"></div>
-        </div>
-        <div style="height:16px"></div>
-        <b style="font-size:12px;color:var(--mut)">REQUIRED DOCUMENTS</b>
-        <div class="hint" style="margin:4px 0 10px">Images or PDF · max 10 MB ${fix(5,'Type & size shown up front')}</div>
-        <div class="grid2">
-          ${docCard('pesticide','Pesticide Licence',true)}
-          ${docCard('fertilizer','Fertilizer Licence',true)}
-          ${docCard('aadhaarF','Aadhaar — Front',true)}
-          ${docCard('aadhaarB','Aadhaar — Back',true)}
-        </div>
-        <div style="height:10px"></div>
-        <b style="font-size:12px;color:var(--mut)">OPTIONAL</b>
-        <div class="grid2" style="margin-top:8px">
-          ${docCard('gst','GST Certificate',false)}
-          ${docCard('pan','PAN Card image',false)}
-        </div>
-        <div style="display:flex;gap:10px;margin-top:16px;align-items:center">
-          <button class="btn green" onclick="gotoVerify()">Continue to Verify →</button>
-          <button class="btn red" onclick="kycRefused()">Retailer refused documents</button>
-          <span class="hint" style="margin-left:auto">Progress: <b>${reqDone()}/4 required</b></span>
-        </div>
-      </div></div>`;
-  }
-
-  // STEP 3 — verify
-  if(s.profile==='Retailer' && s.stage==='kyc' || s.stage==='verified'){
-    html+=verifyCard();
+    html+=profileDetailsCard();
   }
   html+='</div>';
   body.innerHTML=html;
@@ -412,21 +373,104 @@ function docCard(k,label,req){
   </div>`;
 }
 
-function verifyCard(){
+/* ---------------- Profile Details: view → edit → approve ---------------- */
+function profileDetailsCard(){
   const s=st[cur.id];
-  return `<div class="card"><div class="hd"><span class="snum">3</span> Verify &amp; Submit <span class="pill blue">pre-filled from step 2</span> ${fix(5,'No re-entry, no re-upload — inherits everything from step 2')}</div>
-    <div class="bd">
-      <div class="banner green" style="margin-bottom:12px">✓ All data carried over from Details &amp; Documents. Nothing to re-type.</div>
-      <table style="font-size:13px"><tbody>
-        <tr><td class="muted">Shop</td><td><b>${s.basic.shop||'—'}</b></td><td class="muted">PAN</td><td>${s.basic.pan||'—'}</td></tr>
-        <tr><td class="muted">State</td><td>${s.basic.state||'—'}</td><td class="muted">Docs</td><td>${reqDone()}/4 required</td></tr>
-      </tbody></table>
-      <div style="display:flex;gap:10px;margin-top:14px;align-items:center">
-        ${s.verified
-          ? `<span class="pill green" style="font-size:13px;padding:7px 14px">✓ Verified &amp; handed off to Retailer portal</span>`
-          : `<button class="btn green" onclick="saveVerify()">Save &amp; Verify</button><button class="btn" onclick="toast('Saved as draft','green')">Save as Draft</button>`}
-        <span class="hint" style="margin-left:auto">Checklist: Registered ✓ · User details ✓ · Documents ${reqDone()===4?'✓':'⏳ '+reqDone()+'/4'} · Verified ${s.verified?'✓':'—'}</span>
+  const editing=!!s.editing, approved=!!s.verified;
+  return `<div class="card"><div class="hd"><span class="snum">2</span> Profile Details
+      ${approved?'<span class="pill green">✓ Approved</span>':'<span class="pill blue">collected once</span>'}
+      ${fix(5,'One record: shop name, address, PAN, Aadhaar front+back captured here — no “Required” errors later, no re-entry')}
+      <div style="margin-left:auto">
+        ${editing
+          ? `<button class="btn sm" onclick="cancelEdit()">Cancel</button> <button class="btn green sm" onclick="saveEdit()">✓ Save details</button>`
+          : (approved ? '' : `<button class="btn sm" onclick="enterEdit()">✎ Edit details</button>`)}
+      </div></div>
+    <div class="bd">${editing ? editForm() : viewBlock()}</div></div>
+    ${editing ? '' : approveBar()}`;
+}
+
+function viewBlock(){
+  const s=st[cur.id], b=s.basic, d=s.docs;
+  const hasAny=b.name||b.shop||b.pan||b.addr||b.state||reqDone()>0;
+  if(!hasAny) return `<div class="banner blue">📝 No profile details captured yet. Click <b>✎ Edit details</b> (top-right) to add the customer’s profile, business info and documents.</div>`;
+  const vr=(l,v)=>`<div><div class="hint">${l}</div><div style="font-weight:600;margin-top:2px">${v||'<span class="muted">—</span>'}</div></div>`;
+  const DOCS=[['pesticide','Pesticide Licence',1],['fertilizer','Fertilizer Licence',1],['aadhaarF','Aadhaar — Front',1],['aadhaarB','Aadhaar — Back',1],['gst','GST Certificate',0],['pan','PAN Card image',0]];
+  const docRows=DOCS.map(([k,label,req])=>{const x=d[k]||{};const ok=!!x.file;
+    return `<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--bd2)">
+      ${ok?'<span class="pill green">✓ uploaded</span>':(req?'<span class="pill amber">● required</span>':'<span class="pill grey">optional</span>')}
+      <b style="font-size:13px">${label}</b>${x.num?`<span class="hint">· ${x.num}</span>`:''}
+      <span class="hint" style="margin-left:auto">${x.file||''}</span></div>`;}).join('');
+  return `<b style="font-size:12px;color:var(--mut)">CUSTOMER</b>
+    <div class="grid3" style="margin:8px 0 14px">${vr('Name',b.name)}${vr('Phone',b.phone||cur.phone)}${vr('Language',b.lang)}</div>
+    <b style="font-size:12px;color:var(--mut)">BUSINESS</b>
+    <div class="grid3" style="margin:8px 0 12px">${vr('Shop name',b.shop)}${vr('Shop type',b.shoptype)}${vr('PAN number',b.pan)}</div>
+    <div class="grid3" style="margin:0 0 14px">${vr('Address',b.addr)}${vr('City',b.city)}${vr('State',b.state)}</div>
+    <b style="font-size:12px;color:var(--mut)">DOCUMENTS <span class="hint" style="font-weight:400">· ${reqDone()}/4 required uploaded</span></b>
+    <div style="margin-top:6px">${docRows}</div>`;
+}
+
+function editForm(){
+  const s=st[cur.id], b=s.basic;
+  return `<b style="font-size:12px;color:var(--mut)">CUSTOMER</b>
+    <div class="grid3" style="margin:8px 0 12px">
+      <div class="field"><label>Name</label><input value="${b.name||''}" oninput="setBasic('name',this.value)" placeholder="Customer name"></div>
+      <div class="field"><label>Phone</label><input value="${b.phone||cur.phone}" oninput="setBasic('phone',this.value)"></div>
+      <div class="field"><label>Language</label><select onchange="setBasic('lang',this.value)">${['','Hindi','English','Punjabi','Marathi','Telugu','Tamil','Bengali','Gujarati'].map(x=>`<option value="${x}" ${b.lang===x?'selected':''}>${x||'— Select —'}</option>`).join('')}</select></div>
+    </div>
+    <b style="font-size:12px;color:var(--mut)">BUSINESS</b>
+    <div class="grid2" style="margin:8px 0 12px">
+      <div class="field"><label class="req">Shop name</label><input value="${b.shop||''}" oninput="setBasic('shop',this.value)" placeholder="e.g. Khan Agro Centre"></div>
+      <div class="field"><label class="req">PAN number</label><input value="${b.pan||''}" oninput="setBasic('pan',this.value)" placeholder="ABCDE1234F"></div>
+    </div>
+    <div class="grid2" style="margin-bottom:12px">
+      <div class="field"><label>Shop type</label><select onchange="setBasic('shoptype',this.value)">${['','Retail shop','Wholesale','Agri input store','Other'].map(x=>`<option value="${x}" ${b.shoptype===x?'selected':''}>${x||'— Select —'}</option>`).join('')}</select></div>
+      <div class="field"><label class="req">Shop address</label><input value="${b.addr||''}" oninput="setBasic('addr',this.value)" placeholder="Full address"></div>
+    </div>
+    <div class="grid3" style="margin-bottom:6px">
+      <div class="field"><label class="req">State ${fix(8,'Full 28 states + 8 UTs incl. Jammu & Kashmir and Ladakh')}</label>
+        <select onchange="setBasic('state',this.value)">${['<option value="">— Select —</option>'].concat(STATES.map(x=>`<option ${b.state===x?'selected':''}>${x}</option>`)).join('')}</select></div>
+      <div class="field"><label>City</label><input value="${b.city||''}" oninput="setBasic('city',this.value)"></div>
+      <div class="field"><label>Pincode</label><input value="${b.pin||''}" oninput="setBasic('pin',this.value)"></div>
+    </div>
+    <div style="height:14px"></div>
+    <b style="font-size:12px;color:var(--mut)">REQUIRED DOCUMENTS</b>
+    <div class="hint" style="margin:4px 0 10px">Images or PDF · max 10 MB ${fix(5,'Type & size shown up front')}</div>
+    <div class="grid2">${docCard('pesticide','Pesticide Licence',true)}${docCard('fertilizer','Fertilizer Licence',true)}${docCard('aadhaarF','Aadhaar — Front',true)}${docCard('aadhaarB','Aadhaar — Back',true)}</div>
+    <div style="height:10px"></div>
+    <b style="font-size:12px;color:var(--mut)">OPTIONAL</b>
+    <div class="grid2" style="margin-top:8px">${docCard('gst','GST Certificate',false)}${docCard('pan','PAN Card image',false)}</div>
+    <div style="display:flex;gap:10px;margin-top:16px;align-items:center">
+      <button class="btn green" onclick="saveEdit()">✓ Save details</button>
+      <button class="btn" onclick="cancelEdit()">Cancel</button>
+      <span class="hint" style="margin-left:auto">Required docs: <b>${reqDone()}/4</b></span>
+    </div>`;
+}
+
+function approveBar(){
+  const s=st[cur.id], b=s.basic;
+  if(s.verified) return `<div class="card" style="max-width:880px;margin-top:14px;border:1px solid var(--green-l);background:var(--green-bg)">
+    <div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:22px">✅</span>
+      <div style="flex:1"><b style="font-size:14px">KYC approved &amp; handed off to Retailer portal</b><div class="hint">App pricing unlocked for this retailer.</div></div>
+      <button class="btn" onclick="callPanel()">📞 Call Now ${fix(7,'Call stays enabled even after verification')}</button>
+    </div></div>`;
+  const miss=[];
+  if(!b.shop)miss.push('shop name'); if(!b.pan)miss.push('PAN'); if(!b.addr)miss.push('address'); if(!b.state)miss.push('state');
+  const dleft=4-reqDone(); if(dleft>0)miss.push(dleft+' required document'+(dleft>1?'s':''));
+  const ready=miss.length===0;
+  return `<div class="card" style="max-width:880px;margin-top:14px;border:2px solid ${ready?'var(--green)':'var(--bd)'};background:${ready?'linear-gradient(180deg,#f0fdf4,#fff)':'#fff'}">
+    <div class="bd" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px">
+        <b style="font-size:15px">${ready?'✅ All checks passed — ready to approve':'Approve KYC'}</b>
+        <div class="hint" style="margin-top:5px">${ready
+          ? 'Registered ✓ · User details ✓ · Documents ✓ — approving hands off to the Retailer portal.'
+          : '⚠️ Still needed: <b>'+miss.join(', ')+'</b>. Click <b>✎ Edit details</b> above to complete.'}</div>
       </div>
+      <button class="btn green" style="font-size:15px;font-weight:700;padding:14px 30px;border-radius:12px;box-shadow:0 6px 16px rgba(22,163,74,.3)" ${ready?'':'disabled'} onclick="approveKyc()">✓ Approve &amp; Verify KYC</button>
+    </div>
+    <div class="bd" style="border-top:1px solid var(--bd2);padding-top:12px;display:flex;align-items:center;gap:10px">
+      <span class="hint">Retailer won’t share documents?</span>
+      <button class="btn red sm" onclick="kycRefused()">Mark KYC refused</button>
     </div></div>`;
 }
 
@@ -457,8 +501,15 @@ function setBasic(k,v){st[cur.id].basic[k]=v;flag();}
 function setDoc(k,f,v){st[cur.id].docs[k]=st[cur.id].docs[k]||{};st[cur.id].docs[k][f]=v;flag();}
 function fakeUpload(k){st[cur.id].docs[k]=st[cur.id].docs[k]||{};st[cur.id].docs[k].file='scan_'+k+'.jpg';flag();toast('Document committed (auto-saved) — no “Ready to upload” limbo','green');renderFlow();}
 function reqDone(){const d=st[cur.id].docs;return ['pesticide','fertilizer','aadhaarF','aadhaarB'].filter(k=>d[k]&&d[k].file).length;}
-function gotoVerify(){const s=st[cur.id];if(reqDone()<4){toast('Upload all 4 required documents first.');return;}s.stage='kyc';renderWorkspace();}
-function saveVerify(){const s=st[cur.id];s.verified=true;s.stage='verified';cur.status='Verified';cur.incomplete=false;setTimeout(()=>{s.stage='handed';cur.status='Handed off';renderWorkspace();},600);toast('Verified ✓ — routing to Retailer portal','green');renderWorkspace();}
+function enterEdit(){const s=st[cur.id];
+  if(!s.basic.name && cur.name && !cur.name.startsWith('(new)')) s.basic.name=cur.name;
+  if(!s.basic.phone) s.basic.phone=cur.phone;
+  if(!s.basic.state && cur.state) s.basic.state=cur.state;
+  s.editing=true; renderFlow();
+}
+function saveEdit(){st[cur.id].editing=false;flag();toast('Details saved','green');renderFlow();}
+function cancelEdit(){st[cur.id].editing=false;renderFlow();}
+function approveKyc(){const s=st[cur.id];s.verified=true;s.stage='verified';cur.status='Verified';cur.incomplete=false;toast('✓ KYC approved — routing to Retailer portal','green');setTimeout(()=>{s.stage='handed';cur.status='Handed off';renderWorkspace();},700);renderWorkspace();}
 function handoff(p){st[cur.id].stage='handed';cur.status='Handed off';toast('Handed off to '+p,'green');renderWorkspace();}
 function markUnq(){st[cur.id].stage='handed';cur.status='Unqualified';toast('Marked Unqualified','green');go('inbox');}
 function kycRefused(){cur.status='KYC refused';toast('Marked “KYC refused” — visible & re-openable, not a dead-end','green');go('inbox');}
