@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retailer Verification Portal — Redesigned Flow (Prototype)</title>
+<style>
+  :root{
+    --green:#16a34a; --green-d:#15803d; --green-l:#dcfce7; --green-bg:#f0fdf4;
+    --bg:#f6f7f9; --card:#ffffff; --bd:#e5e7eb; --bd2:#eef0f2;
+    --ink:#111827; --mut:#6b7280; --mut2:#9ca3af;
+    --amber:#b45309; --amber-bg:#fffbeb; --amber-bd:#fde68a;
+    --red:#dc2626; --red-bg:#fef2f2; --blue:#2563eb; --blue-bg:#eff6ff;
+    --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.1);
+    --shadow-lg:0 10px 30px rgba(16,24,40,.12);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Segoe UI',Roboto,system-ui,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  .app{display:flex;min-height:100vh}
+  /* sidebar */
+  .side{width:210px;background:#fff;border-right:1px solid var(--bd);padding:14px 0;flex-shrink:0}
+  .brand{display:flex;align-items:center;gap:9px;padding:4px 16px 16px;border-bottom:1px solid var(--bd2);margin-bottom:8px}
+  .brand .logo{width:30px;height:30px;border-radius:8px;background:var(--green);display:grid;place-items:center;color:#fff;font-weight:800}
+  .brand b{font-size:14px}.brand small{display:block;color:var(--mut);font-size:11px;font-weight:400}
+  .nav-grp{color:var(--mut2);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:14px 16px 6px}
+  .nav a{display:flex;align-items:center;gap:10px;padding:9px 16px;color:#374151;text-decoration:none;font-weight:500;border-left:3px solid transparent;cursor:pointer}
+  .nav a.on{background:var(--green-bg);color:var(--green-d);border-left-color:var(--green)}
+  .nav a:hover{background:#f9fafb}
+  .nav .ic{width:16px;text-align:center;opacity:.8}
+  .agent{position:absolute;bottom:0;width:210px;padding:12px 16px;border-top:1px solid var(--bd2);background:#fff;display:flex;gap:9px;align-items:center}
+  .agent .av{width:30px;height:30px;border-radius:50%;background:#0ea5e9;color:#fff;display:grid;place-items:center;font-weight:700}
+  /* main */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .topbar{height:54px;background:#fff;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px;padding:0 18px;position:sticky;top:0;z-index:30}
+  .topbar h1{font-size:15px;margin:0;font-weight:700}
+  .topbar .crumb{color:var(--mut);font-size:13px}
+  .dial{margin-left:auto;display:flex;gap:8px;align-items:center;background:#f3f4f6;border-radius:9px;padding:4px 4px 4px 12px}
+  .dial input{border:0;background:transparent;outline:0;width:150px;font-size:13px}
+  .content{padding:18px;overflow:auto}
+  /* buttons */
+  .btn{border:1px solid var(--bd);background:#fff;border-radius:9px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer;display:inline-flex;gap:7px;align-items:center;color:#374151}
+  .btn:hover{background:#f9fafb}
+  .btn.green{background:var(--green);border-color:var(--green);color:#fff}
+  .btn.green:hover{background:var(--green-d)}
+  .btn.ghost-green{color:var(--green-d);border-color:var(--green);background:var(--green-bg)}
+  .btn.red{color:var(--red);border-color:#fecaca;background:var(--red-bg)}
+  .btn.sm{padding:5px 10px;font-size:12px;border-radius:8px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  /* cards */
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:14px;box-shadow:var(--shadow)}
+  .card .hd{padding:13px 16px;border-bottom:1px solid var(--bd2);display:flex;align-items:center;gap:10px;font-weight:700}
+  .card .bd{padding:16px}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px}
+  .pill.green{background:var(--green-l);color:var(--green-d)}
+  .pill.amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+  .pill.red{background:var(--red-bg);color:var(--red)}
+  .pill.blue{background:var(--blue-bg);color:var(--blue)}
+  .pill.grey{background:#f3f4f6;color:#6b7280}
+  /* inbox table */
+  .tabs{display:flex;gap:6px;margin-bottom:14px}
+  .tab{padding:7px 14px;border-radius:9px;border:1px solid var(--bd);background:#fff;cursor:pointer;font-weight:600;font-size:13px;color:#374151}
+  .tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:1px solid var(--bd)}
+  td{padding:12px;border-bottom:1px solid var(--bd2)}
+  tr.lead{cursor:pointer}tr.lead:hover{background:#f9fafb}
+  /* stepper */
+  .pipe{display:flex;gap:4px;margin:6px 0 2px;flex-wrap:wrap}
+  .pstep{flex:1;min-width:90px;background:#f3f4f6;color:#6b7280;font-size:11px;font-weight:700;padding:8px 10px;border-radius:8px;text-align:center;position:relative}
+  .pstep.done{background:var(--green-l);color:var(--green-d)}
+  .pstep.now{background:var(--green);color:#fff}
+  /* flow steps */
+  .stepwrap{display:flex;flex-direction:column;gap:14px;max-width:880px}
+  .snum{width:26px;height:26px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px;flex-shrink:0}
+  .snum.todo{background:#e5e7eb;color:#9ca3af}
+  .field label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px}
+  .field input,.field select,.field textarea{width:100%;border:1px solid var(--bd);border-radius:9px;padding:9px 11px;font-size:13px;font-family:inherit;outline:0}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px var(--green-l)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .req:after{content:" *";color:var(--red)}
+  .chip{border:1px solid var(--bd);background:#fff;border-radius:999px;padding:7px 13px;font-size:12px;font-weight:600;cursor:pointer;color:#374151}
+  .chip.on{background:var(--green);color:#fff;border-color:var(--green)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .doc{border:1px solid var(--bd);border-radius:11px;padding:13px}
+  .doc.ok{border-color:var(--green);background:var(--green-bg)}
+  .seg{display:inline-flex;border:1px solid var(--bd);border-radius:9px;overflow:hidden}
+  .seg button{border:0;background:#fff;padding:8px 14px;font-weight:600;cursor:pointer;font-size:12px;color:#374151}
+  .seg button.on{background:var(--green);color:#fff}
+  .muted{color:var(--mut)}
+  .hint{font-size:11px;color:var(--mut)}
+  /* toast */
+  .toast{position:fixed;right:20px;bottom:20px;z-index:60;display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+  .tcard{background:#fff;border:1px solid var(--bd);border-left:4px solid var(--green);border-radius:12px;box-shadow:var(--shadow-lg);padding:13px 15px;width:330px;animation:slide .25s ease}
+  .tcard.call{border-left-color:var(--blue)}
+  @keyframes slide{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+  .save{position:fixed;left:222px;bottom:16px;z-index:40;background:#111827;color:#fff;font-size:12px;font-weight:600;padding:7px 13px;border-radius:999px;opacity:0;transition:.3s;display:flex;gap:7px;align-items:center}
+  .save.show{opacity:.92}
+  /* modal */
+  .ov{position:fixed;inset:0;background:rgba(17,24,39,.45);z-index:50;display:none;align-items:center;justify-content:center}
+  .ov.show{display:flex}
+  .modal{background:#fff;border-radius:16px;box-shadow:var(--shadow-lg);width:460px;max-width:92vw;overflow:hidden}
+  .modal .mh{padding:15px 18px;border-bottom:1px solid var(--bd2);display:flex;align-items:center;gap:10px;font-weight:700}
+  .modal .mb{padding:18px}
+  /* help / fixes badge */
+  .fixtag{display:inline-flex;gap:6px;align-items:center;background:var(--blue-bg);color:var(--blue);border:1px dashed #bfdbfe;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;cursor:help}
+  .callbox{background:linear-gradient(180deg,#f0fdf4,#fff);border:1px solid var(--green-l)}
+  .timer{font-variant-numeric:tabular-nums;font-weight:800;font-size:20px;color:var(--green-d)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--mut);margin-top:8px}
+  .legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:4px;vertical-align:middle}
+  .hidden{display:none!important}
+  .banner{background:var(--amber-bg);border:1px solid var(--amber-bd);color:var(--amber);border-radius:11px;padding:11px 14px;font-size:12.5px;font-weight:600;display:flex;gap:9px;align-items:center}
+  .banner.blue{background:var(--blue-bg);border-color:#bfdbfe;color:var(--blue)}
+  .banner.green{background:var(--green-bg);border-color:var(--green-l);color:var(--green-d)}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="side">
+    <div class="brand"><div class="logo">✓</div><div><b>Verification Portal</b><small>Agent · redesigned</small></div></div>
+    <div class="nav-grp">Main</div>
+    <nav class="nav">
+      <a class="on" onclick="go('inbox',this)"><span class="ic">▦</span> My Leads</a>
+      <a onclick="go('inbox',this)"><span class="ic">◷</span> Callback Queue</a>
+      <a onclick="go('inbox',this)"><span class="ic">▤</span> Working Module</a>
+      <a onclick="go('inbox',this)"><span class="ic">✔</span> My Verification</a>
+    </nav>
+    <div class="nav-grp">System</div>
+    <nav class="nav">
+      <a><span class="ic">🔔</span> Notifications</a>
+      <a><span class="ic">⚙</span> Settings</a>
+    </nav>
+    <div class="agent"><div class="av">PK</div><div><b style="font-size:12px">Prativa Kar</b><small style="color:var(--mut);font-size:11px">Agent · AO-1698</small></div></div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <header class="topbar">
+      <h1 id="ttl">My Leads</h1>
+      <span class="crumb" id="crumb"></span>
+      <div class="dial">
+        <span class="ic">📞</span>
+        <input id="dialin" placeholder="Dial any number…">
+        <button class="btn green sm" onclick="dial()">Call</button>
+      </div>
+    </header>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<!-- autosave pill -->
+<div class="save" id="save">💾 All changes saved</div>
+<!-- toasts -->
+<div class="toast" id="toast"></div>
+<!-- modal -->
+<div class="ov" id="ov"><div class="modal" id="modal"></div></div>
+
+<script>
+/* ---------------- demo data ---------------- */
+const LEADS = [
+  {id:'L-4513458', name:'Umar Khan', phone:'9988638717', state:'Madhya Pradesh', src:'ksr-app', status:'New', incomplete:false},
+  {id:'L-4513power', name:'Ravi Sharma', phone:'9810011223', state:'Uttar Pradesh', src:'ksr-app', status:'Incomplete', incomplete:true},
+  {id:'L-4513221', name:'Sukhdev Singh', phone:'9419098765', state:'Jammu & Kashmir', src:'ksr-app', status:'Callback due', incomplete:false},
+  {id:'L-4513090', name:'Meena Devi', phone:'9933445566', state:'Bihar', src:'ksr-app', status:'New', incomplete:false},
+];
+const STATES = ["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Andaman & Nicobar Islands","Chandigarh","Dadra & Nagar Haveli and Daman & Diu","Delhi (NCT)","Jammu & Kashmir","Ladakh","Lakshadweep","Puducherry"];
+const REASONS = ["Verification Complete","Partial Verification","Callback Requested","Not Interested","Already Customer","Wrong Person","Price Objection","Trust Issues"];
+
+let cur=null;            // current lead
+let st={};               // per-lead working state
+let callTimer=null, callSecs=0;
+
+/* ---------------- nav ---------------- */
+function go(view,el){
+  if(el){document.querySelectorAll('.nav a').forEach(a=>a.classList.remove('on'));el.classList.add('on');}
+  if(view==='inbox') renderInbox();
+}
+function fix(n,txt){return `<span class="fixtag" title="${txt}">✓ fixes #${n}</span>`}
+
+/* ---------------- INBOX ---------------- */
+let inboxTab='open';
+function renderInbox(){
+  document.getElementById('ttl').textContent='My Leads';
+  document.getElementById('crumb').textContent='';
+  const rows=LEADS.filter(l=>{
+    if(inboxTab==='open') return l.status==='New'||l.incomplete;
+    if(inboxTab==='callback') return l.status==='Callback due';
+    return true;
+  }).map(l=>`
+    <tr class="lead" onclick="openLead('${l.id}')">
+      <td><b>${l.name}</b><div class="hint">${l.id}</div></td>
+      <td>${l.phone}</td>
+      <td>${l.state}</td>
+      <td>${l.src}</td>
+      <td>${badge(l)}</td>
+      <td style="text-align:right"><button class="btn green sm" onclick="event.stopPropagation();openLead('${l.id}')">Open</button></td>
+    </tr>`).join('');
+  document.getElementById('content').innerHTML=`
+    <div class="banner blue" style="margin-bottom:14px">ℹ️ Demo prototype of the <b>redesigned flow</b>. Click a lead to walk it call → profile → KYC → verify. Hover any <span class="fixtag">✓ fixes #N</span> to see which original problem it solves. Try the <b>“Dial any number”</b> box (top-right) and the <b>Simulate incoming call</b> button inside a lead.</div>
+    <div class="tabs">
+      <div class="tab ${inboxTab==='open'?'on':''}" onclick="inboxTab='open';renderInbox()">My open / incomplete</div>
+      <div class="tab ${inboxTab==='callback'?'on':''}" onclick="inboxTab='callback';renderInbox()">Callback due</div>
+      <div class="tab ${inboxTab==='all'?'on':''}" onclick="inboxTab='all';renderInbox()">All</div>
+      <div style="margin-left:auto" class="hint">${fix(4,'Click-to-dial creates a lead on the fly for numbers not in the system')} &nbsp; ${fix(1,'Incomplete leads always visible here — never lost')}</div>
+    </div>
+    <div class="card"><table>
+      <thead><tr><th>Lead</th><th>Phone</th><th>State</th><th>Source</th><th>Status</th><th></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan=6 class=muted style="padding:24px;text-align:center">No leads in this view.</td></tr>'}</tbody>
+    </table></div>`;
+}
+function badge(l){
+  if(l.incomplete) return '<span class="pill amber">● Incomplete</span>';
+  if(l.status==='Callback due') return '<span class="pill blue">◷ Callback due</span>';
+  if(l.status==='New') return '<span class="pill grey">New</span>';
+  return `<span class="pill grey">${l.status}</span>`;
+}
+
+/* ---------------- DIAL (click-to-dial) ---------------- */
+function dial(){
+  const num=document.getElementById('dialin').value.trim();
+  if(!num){toast('Enter a number to dial.');return;}
+  let l=LEADS.find(x=>x.phone===num);
+  if(!l){ l={id:'L-'+num.slice(-6),name:'(new) '+num,phone:num,state:'',src:'manual-dial',status:'New',incomplete:false}; LEADS.unshift(l);
+    toast('No lead found — created a minimal lead and starting call.','green'); }
+  openLead(l.id);
+}
+
+/* ---------------- OPEN LEAD WORKSPACE ---------------- */
+function openLead(id){
+  cur=LEADS.find(l=>l.id===id);
+  if(!st[id]) st[id]={stage:'contacting',profile:'',docReq:'',reason:'',notes:'',basic:{},docs:{},verified:false};
+  document.getElementById('ttl').textContent=cur.name;
+  document.getElementById('crumb').textContent='· '+cur.id+' · '+cur.phone;
+  renderWorkspace();
+}
+
+function pipe(stage){
+  const steps=[['contacting','Contacting'],['profiled','Profiled'],['kyc','KYC in progress'],['verified','Verified'],['handed','Handed off']];
+  const order=steps.map(s=>s[0]);const ci=order.indexOf(stage);
+  return `<div class="pipe">${steps.map((s,i)=>`<div class="pstep ${i<ci?'done':i===ci?'now':''}">${i<ci?'✓ ':''}${s[1]}</div>`).join('')}</div>
+  <div class="legend"><span><i style="background:var(--green)"></i>Current</span><span><i style="background:var(--green-l)"></i>Done</span><span><i style="background:#f3f4f6"></i>Upcoming</span> ${fix(3,'One unified pipeline replaces the old 4-stage + 8-stage trackers')}</div>`;
+}
+
+function renderWorkspace(){
+  const s=st[cur.id];
+  document.getElementById('content').innerHTML=`
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+      <button class="btn" onclick="go('inbox')">← Leads</button>
+      <div class="card" style="flex:1;display:flex;align-items:center;gap:14px;padding:12px 16px;box-shadow:none">
+        <div class="av" style="width:38px;height:38px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-weight:800">${cur.name.slice(0,1)}</div>
+        <div><b>${cur.name}</b> <span class="pill grey">${cur.id}</span><div class="hint">${cur.phone} · ${cur.state||'—'} · ${cur.src}</div></div>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn" onclick="toast('WhatsApp opened')">💬 WhatsApp</button>
+          <button class="btn green" onclick="callPanel()">📞 Call Now ${fix(7,'Call is enabled in EVERY state, including after verification')}</button>
+        </div>
+      </div>
+    </div>
+    ${pipe(s.stage)}
+    <div style="height:14px"></div>
+    <div id="flowbody"></div>
+    <div style="height:40px"></div>
+    <div class="card" style="max-width:880px;background:#fbfdfb">
+      <div class="bd" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <b style="font-size:12px;color:var(--mut)">DEMO CONTROLS:</b>
+        <button class="btn sm" onclick="simIncoming()">▶ Simulate incoming call (interrupt)</button>
+        <button class="btn sm" onclick="callPanel('short')">▶ Simulate short drop (6s)</button>
+        <button class="btn sm" onclick="callPanel('ok')">▶ Simulate connected (24s)</button>
+      </div>
+    </div>`;
+  renderFlow();
+}
+
+/* ---------------- the staged flow body ---------------- */
+function renderFlow(){
+  const s=st[cur.id];
+  const body=document.getElementById('flowbody');
+  let html='<div class="stepwrap">';
+
+  // STEP 1 — profile type
+  const s1done=!!s.profile;
+  html+=`<div class="card"><div class="hd"><span class="snum ${s1done?'':'todo'}">1</span> Select Profile Type ${fix(6,'Profile type persists immediately — never auto-resets after submit')}</div>
+    <div class="bd">
+      <div class="grid2">
+        <div class="field"><label class="req">Profile type</label>
+          <select onchange="setProfile(this.value)">
+            <option value="">— Select —</option>
+            ${['Farmer','Retailer','Distributor','Other / Non-agri (Unqualified)'].map(p=>`<option ${s.profile===p?'selected':''}>${p}</option>`).join('')}
+          </select></div>
+        <div class="field"><label>Auto-saved</label><div class="pill green" style="margin-top:7px">💾 Saved as you type ${fix(9,'Every field auto-commits — survives refresh & navigation')}</div></div>
+      </div>
+      ${routeNote(s.profile)}
+    </div></div>`;
+
+  // STEP 2 — details + docs (only for Retailer)
+  if(s.profile==='Retailer'){
+    html+=`<div class="card"><div class="hd"><span class="snum">2</span> Details &amp; Documents <span class="pill blue">collected once</span> ${fix(5,'Basic details (shop name, address, PAN, Aadhaar front+back) captured HERE — no “Required” errors later')}</div>
+      <div class="bd">
+        <b style="font-size:12px;color:var(--mut)">BASIC DETAILS</b>
+        <div class="grid2" style="margin:10px 0 4px">
+          <div class="field"><label class="req">Shop name</label><input value="${s.basic.shop||''}" oninput="setBasic('shop',this.value)" placeholder="e.g. Khan Agro Centre"></div>
+          <div class="field"><label class="req">PAN number</label><input value="${s.basic.pan||''}" oninput="setBasic('pan',this.value)" placeholder="ABCDE1234F"></div>
+        </div>
+        <div class="field" style="margin-bottom:10px"><label class="req">Shop address</label><input value="${s.basic.addr||''}" oninput="setBasic('addr',this.value)" placeholder="Full address"></div>
+        <div class="grid3">
+          <div class="field"><label class="req">State ${fix(8,'Full 28 states + 8 UTs incl. Jammu & Kashmir and Ladakh')}</label>
+            <select onchange="setBasic('state',this.value)">${['<option value="">— Select —</option>'].concat(STATES.map(x=>`<option ${s.basic.state===x?'selected':''}>${x}</option>`)).join('')}</select></div>
+          <div class="field"><label>City</label><input value="${s.basic.city||''}" oninput="setBasic('city',this.value)"></div>
+          <div class="field"><label>Pincode</label><input value="${s.basic.pin||''}" oninput="setBasic('pin',this.value)"></div>
+        </div>
+        <div style="height:16px"></div>
+        <b style="font-size:12px;color:var(--mut)">REQUIRED DOCUMENTS</b>
+        <div class="hint" style="margin:4px 0 10px">Images or PDF · max 10 MB ${fix(5,'Type & size shown up front')}</div>
+        <div class="grid2">
+          ${docCard('pesticide','Pesticide Licence',true)}
+          ${docCard('fertilizer','Fertilizer Licence',true)}
+          ${docCard('aadhaarF','Aadhaar — Front',true)}
+          ${docCard('aadhaarB','Aadhaar — Back',true)}
+        </div>
+        <div style="height:10px"></div>
+        <b style="font-size:12px;color:var(--mut)">OPTIONAL</b>
+        <div class="grid2" style="margin-top:8px">
+          ${docCard('gst','GST Certificate',false)}
+          ${docCard('pan','PAN Card image',false)}
+        </div>
+        <div style="display:flex;gap:10px;margin-top:16px;align-items:center">
+          <button class="btn green" onclick="gotoVerify()">Continue to Verify →</button>
+          <button class="btn red" onclick="kycRefused()">Retailer refused documents</button>
+          <span class="hint" style="margin-left:auto">Progress: <b>${reqDone()}/4 required</b></span>
+        </div>
+      </div></div>`;
+  }
+
+  // STEP 3 — verify
+  if(s.profile==='Retailer' && s.stage==='kyc' || s.stage==='verified'){
+    html+=verifyCard();
+  }
+  html+='</div>';
+  body.innerHTML=html;
+}
+
+function routeNote(p){
+  if(p==='Farmer') return `<div class="banner green" style="margin-top:6px">🌾 Farmer identified → <button class="btn green sm" onclick="handoff('Farmer portal')">Route to Farmer portal</button> No KYC document step on this portal.</div>`;
+  if(p==='Distributor') return `<div class="banner green" style="margin-top:6px">🏬 Distributor identified → <button class="btn green sm" onclick="handoff('Distributor portal')">Route to Distributor portal</button></div>`;
+  if(p && p.startsWith('Other')) return `<div class="banner" style="margin-top:6px">⛔ Non-agri / not a lead → <button class="btn sm" onclick="markUnq()">Mark Unqualified</button></div>`;
+  if(p==='Retailer') return `<div class="banner blue" style="margin-top:6px">🛒 Retailer → continue to Details &amp; Documents below. KYC unlocks app pricing.</div>`;
+  return '';
+}
+
+function docCard(k,label,req){
+  const s=st[cur.id];const d=s.docs[k]||{};
+  return `<div class="doc ${d.file?'ok':''}" id="doc-${k}">
+    <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">${label}${req?' *':''}</b>${d.file?'<span class="pill green">✓ uploaded</span>':'<span class="pill grey">pending</span>'}</div>
+    <div class="field" style="margin:9px 0"><input placeholder="Document number" value="${d.num||''}" oninput="setDoc('${k}','num',this.value)"></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn sm" onclick="fakeUpload('${k}')">⬆ ${d.file?'Replace':'Upload'}</button>
+      ${d.file?`<span class="hint">${d.file}</span>`:''}
+    </div>
+  </div>`;
+}
+
+function verifyCard(){
+  const s=st[cur.id];
+  return `<div class="card"><div class="hd"><span class="snum">3</span> Verify &amp; Submit <span class="pill blue">pre-filled from step 2</span> ${fix(5,'No re-entry, no re-upload — inherits everything from step 2')}</div>
+    <div class="bd">
+      <div class="banner green" style="margin-bottom:12px">✓ All data carried over from Details &amp; Documents. Nothing to re-type.</div>
+      <table style="font-size:13px"><tbody>
+        <tr><td class="muted">Shop</td><td><b>${s.basic.shop||'—'}</b></td><td class="muted">PAN</td><td>${s.basic.pan||'—'}</td></tr>
+        <tr><td class="muted">State</td><td>${s.basic.state||'—'}</td><td class="muted">Docs</td><td>${reqDone()}/4 required</td></tr>
+      </tbody></table>
+      <div style="display:flex;gap:10px;margin-top:14px;align-items:center">
+        ${s.verified
+          ? `<span class="pill green" style="font-size:13px;padding:7px 14px">✓ Verified &amp; handed off to Retailer portal</span>`
+          : `<button class="btn green" onclick="saveVerify()">Save &amp; Verify</button><button class="btn" onclick="toast('Saved as draft','green')">Save as Draft</button>`}
+        <span class="hint" style="margin-left:auto">Checklist: Registered ✓ · User details ✓ · Documents ${reqDone()===4?'✓':'⏳ '+reqDone()+'/4'} · Verified ${s.verified?'✓':'—'}</span>
+      </div>
+    </div></div>`;
+}
+
+/* ---------------- state setters ---------------- */
+function flag(){const e=document.getElementById('save');e.classList.add('show');clearTimeout(flag._t);flag._t=setTimeout(()=>e.classList.remove('show'),1100);}
+function setProfile(v){st[cur.id].profile=v; if(v==='Retailer'&&st[cur.id].stage==='contacting')st[cur.id].stage='kyc'; if(v&&st[cur.id].stage==='contacting')st[cur.id].stage='profiled'; flag(); renderWorkspace();}
+function setBasic(k,v){st[cur.id].basic[k]=v;flag();}
+function setDoc(k,f,v){st[cur.id].docs[k]=st[cur.id].docs[k]||{};st[cur.id].docs[k][f]=v;flag();}
+function fakeUpload(k){st[cur.id].docs[k]=st[cur.id].docs[k]||{};st[cur.id].docs[k].file='scan_'+k+'.jpg';flag();toast('Document committed (auto-saved) — no “Ready to upload” limbo','green');renderFlow();}
+function reqDone(){const d=st[cur.id].docs;return ['pesticide','fertilizer','aadhaarF','aadhaarB'].filter(k=>d[k]&&d[k].file).length;}
+function gotoVerify(){const s=st[cur.id];if(reqDone()<4){toast('Upload all 4 required documents first.');return;}s.stage='kyc';renderWorkspace();}
+function saveVerify(){const s=st[cur.id];s.verified=true;s.stage='verified';cur.status='Verified';cur.incomplete=false;setTimeout(()=>{s.stage='handed';cur.status='Handed off';renderWorkspace();},600);toast('Verified ✓ — routing to Retailer portal','green');renderWorkspace();}
+function handoff(p){st[cur.id].stage='handed';cur.status='Handed off';toast('Handed off to '+p,'green');renderWorkspace();}
+function markUnq(){st[cur.id].stage='handed';cur.status='Unqualified';toast('Marked Unqualified','green');go('inbox');}
+function kycRefused(){cur.status='KYC refused';toast('Marked “KYC refused” — visible & re-openable, not a dead-end','green');go('inbox');}
+
+/* ---------------- CALL + auto status + threshold ---------------- */
+function callPanel(mode){
+  // mode: 'short'|'ok'|undefined(live)
+  let secs = mode==='short'?6 : mode==='ok'?24 : 0;
+  openModal(`
+    <div class="mh">📞 Live call — ${cur.name} <span class="pill green" style="margin-left:auto" id="cstat">Connected</span></div>
+    <div class="mb">
+      <div class="callbox card" style="box-shadow:none;text-align:center;padding:16px;margin-bottom:14px">
+        <div class="hint">Call duration (auto-captured)</div>
+        <div class="timer" id="ctimer">00:${String(secs).padStart(2,'0')}</div>
+        <div class="hint" id="cnote">${fix(2,'Connected/Not-Connected is read from telephony — agent never picks it')}</div>
+      </div>
+      <div id="dispo"></div>
+    </div>`);
+  // simulate
+  if(mode){ finishCall(secs); }
+  else { callSecs=0; callTimer=setInterval(()=>{callSecs++;document.getElementById('ctimer').textContent='00:'+String(callSecs).padStart(2,'0');},1000);
+    setTimeout(()=>{},0);
+    document.getElementById('dispo').innerHTML=`<button class="btn green" style="width:100%" onclick="endLive()">End call</button>`;
+  }
+}
+function endLive(){clearInterval(callTimer);finishCall(callSecs);}
+function finishCall(secs){
+  const T=15;
+  let routed;
+  if(secs===0){routed='notconn';}
+  else if(secs<T){routed='short';}
+  else routed='ok';
+  const box=document.getElementById('dispo');
+  if(routed==='ok'){
+    box.innerHTML=`
+      <div class="banner green" style="margin-bottom:12px">✓ Connected ${secs}s (≥ ${T}s threshold) → proceed to disposition &amp; profiling. ${fix(3,'Duration ≥ threshold routes straight to profiling')}</div>
+      <div class="field" style="margin-bottom:10px"><label>Reason</label><div class="chips" id="rchips">${REASONS.map(r=>`<div class="chip" onclick="this.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));this.classList.add('on')">${r}</div>`).join('')}</div></div>
+      <div class="field" style="margin-bottom:12px"><label>Notes</label><textarea rows="2" placeholder="Key points from the call…"></textarea></div>
+      <button class="btn green" style="width:100%" onclick="closeModal();toast('Disposition saved — start profiling below','green')">Save &amp; start profiling</button>`;
+  } else if(routed==='short'){
+    box.innerHTML=`
+      <div class="banner" style="margin-bottom:12px">⏱️ Connected but only ${secs}s (&lt; ${T}s) → default route: <b>Callback queue</b>. Too short to reliably profile. ${fix(3,'Short drop routes to callback queue — not forced misclassification, not lost')}</div>
+      <div class="banner blue" style="margin-bottom:12px">But if you <b>did</b> identify the profile in those ${secs}s, you may override:</div>
+      <div style="display:flex;gap:10px">
+        <button class="btn green" style="flex:1" onclick="closeModal();toast('Queued for callback (attempt logged)','green')">Send to Callback queue</button>
+        <button class="btn ghost-green" style="flex:1" onclick="closeModal();toast('Override: you may set profile type below (logged)','green')">I identified it — let me profile</button>
+      </div>`;
+  } else {
+    box.innerHTML=`<div class="banner" style="margin-bottom:12px">☎️ Not connected → auto-queued for callback (attempt +1). After 3 failed/short attempts → <b>Unreachable</b>.</div>
+      <button class="btn green" style="width:100%" onclick="closeModal();toast('Callback scheduled','green')">OK</button>`;
+  }
+}
+
+/* ---------------- incoming-call interrupt ---------------- */
+function simIncoming(){
+  pushToast('call',`<div style="display:flex;gap:10px;align-items:center">
+    <div style="font-size:20px">📲</div>
+    <div style="flex:1"><b>Incoming call</b> +91 90011 22334<div class="hint">Your current lead stays open &amp; saved ${fix(1,'Incoming call does NOT replace the open profile — it waits in a toast')}</div></div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:10px">
+    <button class="btn green sm" style="flex:1" onclick="toast('Opened the new caller — previous lead was auto-saved, find it under “Incomplete”.');this.closest('.tcard').remove()">Open when ready</button>
+    <button class="btn sm" onclick="this.closest('.tcard').remove()">Ignore</button>
+  </div>`);
+}
+
+/* ---------------- toast + modal helpers ---------------- */
+function toast(msg,kind){pushToast(kind==='green'?'':'',`<div style="display:flex;gap:9px;align-items:center"><span>${kind==='green'?'✅':'ℹ️'}</span><div>${msg}</div></div>`,3200);}
+function pushToast(cls,html,ttl){
+  const t=document.createElement('div');t.className='tcard '+(cls||'');t.innerHTML=html;
+  document.getElementById('toast').appendChild(t);
+  if(ttl)setTimeout(()=>t.remove(),ttl);
+}
+function openModal(html){document.getElementById('modal').innerHTML=html;document.getElementById('ov').classList.add('show');}
+function closeModal(){document.getElementById('ov').classList.remove('show');if(callTimer)clearInterval(callTimer);}
+document.getElementById('ov').addEventListener('click',e=>{if(e.target.id==='ov')closeModal();});
+
+/* init */
+renderInbox();
+if(location.hash.indexOf('lead=')>-1){ openLead(location.hash.split('lead=')[1]); }
+</script>
+</body>
+</html>
