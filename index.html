@@ -166,6 +166,16 @@ const LEADS = [
 ];
 const STATES = ["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Andaman & Nicobar Islands","Chandigarh","Dadra & Nagar Haveli and Daman & Diu","Delhi (NCT)","Jammu & Kashmir","Ladakh","Lakshadweep","Puducherry"];
 const REASONS = ["Verification Complete","Partial Verification","Callback Requested","Not Interested","Already Customer","Wrong Person","Price Objection","Trust Issues"];
+const TYPE_OUTCOMES = ['Farmer','Retailer','Distributor','Other / Non-agri (Unqualified)'];
+const CD_REASONS = {
+  'Language barrier'      : "Reassign to an agent who speaks the customer's language",
+  'Customer evasive'      : "Callback queue (low priority)",
+  'Refused to answer'     : "Callback queue (low priority)",
+  'Call dropped mid-probe': "Immediate callback scheduled",
+  'Wrong person'          : "Marked as invalid contact"
+};
+const CB_WHEN = ["In 1 hour","Later today","Tomorrow morning","Tomorrow evening","In 2 days"];
+const QA_THRESHOLD = 45; // long-call signal for QA flag (not a gate)
 
 let cur=null;            // current lead
 let st={};               // per-lead working state
@@ -229,7 +239,7 @@ function dial(){
 /* ---------------- OPEN LEAD WORKSPACE ---------------- */
 function openLead(id){
   cur=LEADS.find(l=>l.id===id);
-  if(!st[id]) st[id]={stage:'contacting',profile:'',docReq:'',reason:'',notes:'',basic:{},docs:{},verified:false};
+  if(!st[id]) st[id]={stage:'contacting',profile:'',outcome:'',cdReason:'',cbWhen:'',tentative:false,q1:'',q2:'',lastCallSecs:0,docReq:'',reason:'',notes:'',basic:{},docs:{},verified:false};
   document.getElementById('ttl').textContent=cur.name;
   document.getElementById('crumb').textContent='· '+cur.id+' · '+cur.phone;
   renderWorkspace();
@@ -277,19 +287,37 @@ function renderFlow(){
   const body=document.getElementById('flowbody');
   let html='<div class="stepwrap">';
 
-  // STEP 1 — profile type
-  const s1done=!!s.profile;
-  html+=`<div class="card"><div class="hd"><span class="snum ${s1done?'':'todo'}">1</span> Select Profile Type ${fix(6,'Profile type persists immediately — never auto-resets after submit')}</div>
+  // STEP 1 — profiling OUTCOME (smart outcome model: must-respond, not must-classify)
+  const oc=s.outcome;
+  const isType=TYPE_OUTCOMES.includes(oc);
+  const s1done = !!oc && (oc!=="Couldn't determine" || !!s.cdReason) && (oc!=='Callback needed' || !!s.cbWhen);
+  html+=`<div class="card"><div class="hd"><span class="snum ${s1done?'':'todo'}">1</span> Profiling outcome <span class="pill blue">must respond, not must classify</span> ${fix(6,'Profile persists immediately & never auto-resets. “Couldn’t determine (+reason)” is a valid, accountable close — the agent is never stuck and never forced to guess')}</div>
     <div class="bd">
-      <div class="grid2">
-        <div class="field"><label class="req">Profile type</label>
-          <select onchange="setProfile(this.value)">
-            <option value="">— Select —</option>
-            ${['Farmer','Retailer','Distributor','Other / Non-agri (Unqualified)'].map(p=>`<option ${s.profile===p?'selected':''}>${p}</option>`).join('')}
-          </select></div>
-        <div class="field"><label>Auto-saved</label><div class="pill green" style="margin-top:7px">💾 Saved as you type ${fix(9,'Every field auto-commits — survives refresh & navigation')}</div></div>
+      <b style="font-size:12px;color:var(--mut)">GUIDED CLASSIFIER <span class="hint" style="font-weight:400">— answer up to 2 quick questions and the type is set for you</span></b>
+      <div style="margin:10px 0 4px">
+        <div class="field" style="margin-bottom:10px"><label>Q1 · Buying for own farm, or to resell?</label>
+          <div class="chips">
+            <div class="chip ${s.q1==='own'?'on':''}" onclick="classify('q1','own')">🌾 For own farm</div>
+            <div class="chip ${s.q1==='resell'?'on':''}" onclick="classify('q1','resell')">🛒 To resell</div>
+          </div></div>
+        ${s.q1==='resell'?`<div class="field"><label>Q2 · Sells to farmers directly, or to other shops?</label>
+          <div class="chips">
+            <div class="chip ${s.q2==='farmers'?'on':''}" onclick="classify('q2','farmers')">👨‍🌾 To farmers → Retailer</div>
+            <div class="chip ${s.q2==='shops'?'on':''}" onclick="classify('q2','shops')">🏬 To other shops → Distributor</div>
+          </div></div>`:''}
       </div>
-      ${routeNote(s.profile)}
+      <div style="border-top:1px solid var(--bd2);margin:14px 0"></div>
+      <b style="font-size:12px;color:var(--mut)">OUTCOME <span style="color:var(--red)">*</span> <span class="hint" style="font-weight:400">— required before the call can be closed (escape hatch always available)</span></b>
+      <div class="chips" style="margin:10px 0">
+        ${TYPE_OUTCOMES.map(p=>`<div class="chip ${oc===p?'on':''}" onclick="setOutcome('${p}')">${p}</div>`).join('')}
+        <div class="chip ${oc==="Couldn't determine"?'on':''}" style="${oc==="Couldn't determine"?'':'border-style:dashed'}" onclick="setOutcome(&quot;Couldn't determine&quot;)">🤷 Couldn't determine</div>
+        <div class="chip ${oc==='Callback needed'?'on':''}" style="${oc==='Callback needed'?'':'border-style:dashed'}" onclick="setOutcome('Callback needed')">◷ Callback needed</div>
+      </div>
+      ${isType?`<label class="hint" style="display:flex;gap:7px;align-items:center;margin:2px 0 8px;cursor:pointer"><input type="checkbox" ${s.tentative?'checked':''} onchange="setTentative(this.checked)" style="width:auto;margin:0"> Mark <b style="margin:0 3px">tentative</b> — I have a lean but I'm not 100% sure (lead proceeds with a confirm-pending flag)</label>`:''}
+      ${oc==="Couldn't determine"?cdReasonBlock():''}
+      ${oc==='Callback needed'?cbWhenBlock():''}
+      ${qaFlagBlock()}
+      ${routeNote(isType?oc:'')}
     </div></div>`;
 
   // STEP 2 — details + docs (only for Retailer)
@@ -340,10 +368,35 @@ function renderFlow(){
 }
 
 function routeNote(p){
-  if(p==='Farmer') return `<div class="banner green" style="margin-top:6px">🌾 Farmer identified → <button class="btn green sm" onclick="handoff('Farmer portal')">Route to Farmer portal</button> No KYC document step on this portal.</div>`;
-  if(p==='Distributor') return `<div class="banner green" style="margin-top:6px">🏬 Distributor identified → <button class="btn green sm" onclick="handoff('Distributor portal')">Route to Distributor portal</button></div>`;
+  const tnt = (cur&&st[cur.id]&&st[cur.id].tentative)?` <span class="pill amber">tentative · confirm pending</span>`:'';
+  if(p==='Farmer') return `<div class="banner green" style="margin-top:6px">🌾 Farmer identified${tnt} → <button class="btn green sm" onclick="handoff('Farmer portal')">Route to Farmer portal</button> No KYC document step on this portal.</div>`;
+  if(p==='Distributor') return `<div class="banner green" style="margin-top:6px">🏬 Distributor identified${tnt} → <button class="btn green sm" onclick="handoff('Distributor portal')">Route to Distributor portal</button></div>`;
   if(p && p.startsWith('Other')) return `<div class="banner" style="margin-top:6px">⛔ Non-agri / not a lead → <button class="btn sm" onclick="markUnq()">Mark Unqualified</button></div>`;
-  if(p==='Retailer') return `<div class="banner blue" style="margin-top:6px">🛒 Retailer → continue to Details &amp; Documents below. KYC unlocks app pricing.</div>`;
+  if(p==='Retailer') return `<div class="banner blue" style="margin-top:6px">🛒 Retailer${tnt} → continue to Details &amp; Documents below. KYC unlocks app pricing.</div>`;
+  return '';
+}
+
+/* ---------------- profiling-outcome blocks (smart outcome model) ---------------- */
+function cdReasonBlock(){
+  const s=st[cur.id];
+  return `<div class="banner" style="margin-bottom:10px">🤷 “Couldn't determine” is a valid close — but the escape isn't free: a reason is <b>required</b> and tracked, so it can't be abused. ${fix(6,'Agent never stuck; reason gate + per-agent QA analytics keep the escape honest')}</div>
+    <div class="field" style="margin-bottom:8px"><label class="req">Why couldn't the type be determined?</label>
+      <select onchange="setCdReason(this.value)"><option value="">— Select reason —</option>${Object.keys(CD_REASONS).map(r=>`<option ${s.cdReason===r?'selected':''}>${r}</option>`).join('')}</select></div>
+    ${s.cdReason?`<div class="banner blue" style="margin-bottom:8px">↪ Productive route (never limbo): <b>${CD_REASONS[s.cdReason]}</b></div>
+      <button class="btn green sm" onclick="closeCD()">Close lead with this outcome</button>`:''}`;
+}
+function cbWhenBlock(){
+  const s=st[cur.id];
+  return `<div class="field" style="margin:6px 0 8px"><label class="req">Schedule callback for</label>
+      <select onchange="setCbWhen(this.value)"><option value="">— When —</option>${CB_WHEN.map(w=>`<option ${s.cbWhen===w?'selected':''}>${w}</option>`).join('')}</select></div>
+    ${s.cbWhen?`<button class="btn green sm" onclick="closeCB()">Queue callback (${s.cbWhen})</button>`:''}`;
+}
+function qaFlagBlock(){
+  const s=st[cur.id]; const d=s.lastCallSecs||0;
+  if(d>=QA_THRESHOLD && s.outcome==="Couldn't determine")
+    return `<div class="banner" style="margin:8px 0;border-style:dashed">🚩 QA flag: a ${d}s call closed as “Couldn't determine” is unusual → routed to QA review. ${fix(3,'Duration is a signal (QA flag + per-agent analytics), never a hard gate')}</div>`;
+  if(d>0 && d<15 && TYPE_OUTCOMES.includes(s.outcome) && !s.outcome.startsWith('Other'))
+    return `<div class="banner blue" style="margin:8px 0">ℹ️ Profiled on a short ${d}s call — allowed, but logged as an override for the data-quality audit.</div>`;
   return '';
 }
 
@@ -379,7 +432,27 @@ function verifyCard(){
 
 /* ---------------- state setters ---------------- */
 function flag(){const e=document.getElementById('save');e.classList.add('show');clearTimeout(flag._t);flag._t=setTimeout(()=>e.classList.remove('show'),1100);}
-function setProfile(v){st[cur.id].profile=v; if(v==='Retailer'&&st[cur.id].stage==='contacting')st[cur.id].stage='kyc'; if(v&&st[cur.id].stage==='contacting')st[cur.id].stage='profiled'; flag(); renderWorkspace();}
+function applyOutcome(p){const s=st[cur.id]; s.outcome=p; s.profile=p; s.cdReason=''; s.cbWhen='';
+  if(p==='Retailer'){ if(s.stage==='contacting'||s.stage==='profiled')s.stage='kyc'; }
+  else if(s.stage==='contacting'){ s.stage='profiled'; }
+}
+function classify(q,v){const s=st[cur.id]; s[q]=v;
+  if(q==='q1'&&v==='own'){ s.q2=''; applyOutcome('Farmer'); }
+  else if(q==='q1'&&v==='resell'){ s.q2=''; s.outcome=''; s.profile=''; flag(); renderWorkspace(); return; }
+  else if(q==='q2'&&v==='farmers'){ applyOutcome('Retailer'); }
+  else if(q==='q2'&&v==='shops'){ applyOutcome('Distributor'); }
+  flag(); renderWorkspace();
+}
+function setOutcome(p){const s=st[cur.id];
+  if(TYPE_OUTCOMES.includes(p)){ applyOutcome(p); }
+  else { s.outcome=p; s.profile=''; s.tentative=false; if(p!=="Couldn't determine")s.cdReason=''; if(p!=='Callback needed')s.cbWhen=''; }
+  flag(); renderWorkspace();
+}
+function setTentative(v){st[cur.id].tentative=v;flag();renderFlow();}
+function setCdReason(v){st[cur.id].cdReason=v;flag();renderFlow();}
+function setCbWhen(v){st[cur.id].cbWhen=v;flag();renderFlow();}
+function closeCD(){const s=st[cur.id];cur.status="Couldn't determine";cur.incomplete=false;toast('Closed as “Couldn’t determine” → '+CD_REASONS[s.cdReason],'green');go('inbox');}
+function closeCB(){const s=st[cur.id];cur.status='Callback due';cur.incomplete=true;toast('Callback queued — '+s.cbWhen,'green');go('inbox');}
 function setBasic(k,v){st[cur.id].basic[k]=v;flag();}
 function setDoc(k,f,v){st[cur.id].docs[k]=st[cur.id].docs[k]||{};st[cur.id].docs[k][f]=v;flag();}
 function fakeUpload(k){st[cur.id].docs[k]=st[cur.id].docs[k]||{};st[cur.id].docs[k].file='scan_'+k+'.jpg';flag();toast('Document committed (auto-saved) — no “Ready to upload” limbo','green');renderFlow();}
@@ -413,6 +486,7 @@ function callPanel(mode){
 }
 function endLive(){clearInterval(callTimer);finishCall(callSecs);}
 function finishCall(secs){
+  if(cur&&st[cur.id])st[cur.id].lastCallSecs=secs;
   const T=15;
   let routed;
   if(secs===0){routed='notconn';}
@@ -424,14 +498,14 @@ function finishCall(secs){
       <div class="banner green" style="margin-bottom:12px">✓ Connected ${secs}s (≥ ${T}s threshold) → proceed to disposition &amp; profiling. ${fix(3,'Duration ≥ threshold routes straight to profiling')}</div>
       <div class="field" style="margin-bottom:10px"><label>Reason</label><div class="chips" id="rchips">${REASONS.map(r=>`<div class="chip" onclick="this.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));this.classList.add('on')">${r}</div>`).join('')}</div></div>
       <div class="field" style="margin-bottom:12px"><label>Notes</label><textarea rows="2" placeholder="Key points from the call…"></textarea></div>
-      <button class="btn green" style="width:100%" onclick="closeModal();toast('Disposition saved — start profiling below','green')">Save &amp; start profiling</button>`;
+      <button class="btn green" style="width:100%" onclick="closeModal();renderWorkspace();toast('Disposition saved — start profiling below','green')">Save &amp; start profiling</button>`;
   } else if(routed==='short'){
     box.innerHTML=`
       <div class="banner" style="margin-bottom:12px">⏱️ Connected but only ${secs}s (&lt; ${T}s) → default route: <b>Callback queue</b>. Too short to reliably profile. ${fix(3,'Short drop routes to callback queue — not forced misclassification, not lost')}</div>
       <div class="banner blue" style="margin-bottom:12px">But if you <b>did</b> identify the profile in those ${secs}s, you may override:</div>
       <div style="display:flex;gap:10px">
         <button class="btn green" style="flex:1" onclick="closeModal();toast('Queued for callback (attempt logged)','green')">Send to Callback queue</button>
-        <button class="btn ghost-green" style="flex:1" onclick="closeModal();toast('Override: you may set profile type below (logged)','green')">I identified it — let me profile</button>
+        <button class="btn ghost-green" style="flex:1" onclick="closeModal();renderWorkspace();toast('Override: you may set the outcome below (logged for QA)','green')">I identified it — let me profile</button>
       </div>`;
   } else {
     box.innerHTML=`<div class="banner" style="margin-bottom:12px">☎️ Not connected → auto-queued for callback (attempt +1). After 3 failed/short attempts → <b>Unreachable</b>.</div>
