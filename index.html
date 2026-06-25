@@ -93,6 +93,19 @@
   .vrow .lab{font-size:11px;color:var(--mut2);font-weight:600}
   .vrow .val{font-weight:600;margin-top:2px;font-size:13.5px}
   .vrow .val .muted{color:var(--mut2);font-weight:500}
+  /* compact read-only view */
+  .vpanel{border:1px solid var(--bd2);border-radius:12px;padding:2px 16px 14px;background:#fcfdfe}
+  .vhdr{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--green-d);padding:13px 0 9px;border-bottom:1px solid var(--bd2);margin-bottom:11px;display:flex;align-items:center;gap:7px}
+  .vhdr .n{margin-left:auto;color:var(--mut2);font-weight:600;letter-spacing:0;text-transform:none}
+  .vgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px 20px;margin-bottom:4px}
+  .cv{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .cl{font-size:10px;color:var(--mut2);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+  .cvv{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cvv .muted{color:#c2c7cf;font-weight:500}
+  .docg{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:2px}
+  .dchip{display:flex;align-items:center;gap:8px;border:1px solid var(--bd2);border-radius:9px;padding:8px 10px;font-size:12px;background:#fff}
+  .dchip.req{border-color:var(--red-bd);background:#fff8f8}
+  .dchip b{font-size:12px;font-weight:600} .dchip .x{margin-left:auto;font-size:10px;color:var(--mut2)}
   /* doc tiles */
   .doc{border:1.5px solid var(--green-l);border-radius:12px;padding:12px;background:#fafffb;position:relative}
   .doc.req{border-color:var(--red-bd);background:#fff8f8}
@@ -233,7 +246,7 @@ function dial(){const num=document.getElementById('dialin').value.trim();if(!num
 /* ===================== LEAD DETAILS PAGE (Module B) ===================== */
 function openLead(id){
   cur=LEADS.find(l=>l.id===id);
-  if(!st[id])st[id]={stage:'kyc',editing:false,verified:false,b:{},docs:{}};
+  if(!st[id])st[id]={stage:'kyc',editing:false,verified:false,b:{ptype:'Retailer'},docs:{}};
   renderLead();
 }
 function stageIx(s){return s.verified?8:6;}
@@ -261,7 +274,7 @@ function renderLead(){
     </div></div>
     <!-- tabs + retailer information -->
     <div class="card" style="padding:0">
-      <div class="tabs2"><a>Timeline</a><a>Profile &amp; Docs <span class="ct">5</span></a><a>Recordings <span class="ct">1</span></a><a>Address <span class="ct">0</span></a><a class="on">Retailer Information</a></div>
+      <div class="tabs2"><a class="on">Retailer Information</a><a>Timeline</a><a>Profile &amp; Docs <span class="ct">5</span></a><a>Recordings <span class="ct">1</span></a><a>Address <span class="ct">0</span></a></div>
       <div class="bd" id="ri"></div>
     </div>`;
   renderRI();
@@ -270,36 +283,50 @@ function renderLead(){
 /* ---- Retailer Information: VIEW -> EDIT (all in one place) -> APPROVE ---- */
 function renderRI(){
   const s=st[cur.id];
-  const el=document.getElementById('ri');
-  const headRow=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-      <div><b style="font-size:14px">Retailer Information</b><div class="hint">Complete retailer profile for app-installed retailers.</div></div>
-      <div style="display:flex;gap:12px;margin-left:auto;align-items:center">
-        <span class="sq draft">Draft (not from API)</span><span class="sq api">API data</span>
-        ${s.verified?'<span class="pill green" style="padding:6px 12px">✓ Verified</span>'
-          :s.editing?`<button class="btn sm" onclick="cancelEdit()">Cancel</button><button class="btn green sm" onclick="saveEdit()">✓ Save details</button>`
-          :`<button class="btn green sm" onclick="enterEdit()">✎ Edit all details ${fix(5,'Edit every field — personal, business & documents — in one place')}</button>`}
-      </div></div>`;
-  el.innerHTML = headRow + (s.editing?editForm():viewBlock()) + verifyBar();
+  document.getElementById('ri').innerHTML = topBar() + (s.editing ? (profileTypeSec()+editForm()) : viewBlock());
+}
+
+/* prominent action/approve bar at TOP */
+function topBar(){
+  const s=st[cur.id];
+  const miss=missing(), ready=miss.length===0;
+  return `<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:13px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px"><b style="font-size:14px">Retailer Information</b><div class="hint">Complete retailer profile for app-installed retailers.</div>
+        <div style="margin-top:7px;display:flex;gap:14px"><span class="sq draft">Draft (not from API)</span><span class="sq api">API data</span></div></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+        ${s.editing?`<button class="btn sm" onclick="cancelEdit()">Cancel</button><button class="btn green sm" onclick="saveEdit()">💾 Save</button>`
+                   :`<button class="btn sm" onclick="enterEdit()">✎ Edit all details ${fix(5,'Edit every field — personal, business & documents — in one place')}</button><button class="btn sm" onclick="toast('Saved','green')">💾 Save</button>`}
+        ${s.verified?'<span class="pill green" style="padding:9px 15px;font-size:13px">✓ Verified &amp; handed off</span>'
+          :`<button class="btn greenbright lg" ${ready?'':'disabled'} onclick="approve()">✓ Approve &amp; Verify KYC</button>`}
+      </div></div>
+    ${s.verified?'':ready?`<div class="banner green" style="margin-bottom:14px">✅ All required information &amp; documents present — ready to approve.</div>`
+      :`<div class="banner amber" style="margin-bottom:14px">⚠️ To approve, still needed: <b>${miss.join(', ')}</b>. Click <b>✎ Edit all details</b>.</div>`}`;
+}
+
+/* profile type — above Personal Information (as in live); edit-mode only */
+function profileTypeSec(){
+  const b=st[cur.id].b, types=['Farmer','Retailer','Distributor','Other / Non-agri'];
+  return `<div class="sec"><div class="sh">🏷 Profile Type</div><div class="sb"><div class="grid3"><div class="field"><label class="req">Profile / Customer type</label>
+    <select onchange="setB('ptype',this.value)">${['<option value="">— Select —</option>'].concat(types.map(t=>`<option ${b.ptype===t?'selected':''}>${t}</option>`)).join('')}</select></div></div></div></div>`;
 }
 
 function viewBlock(){
   const s=st[cur.id],b=s.b;
-  if(!filledAny()) return `<div class="banner blue" style="margin-bottom:6px">📝 No retailer details captured yet. Click <b>✎ Edit all details</b> (top-right) to fill personal info, business info and documents — all in one place.</div>`;
-  const vr=(l,v)=>`<div class="vrow"><div class="lab">${l}</div><div class="val">${v||'<span class="muted">—</span>'}</div></div>`;
-  const docView=DOCS.map(([k,label,req,exp])=>{const d=s.docs[k]||{},ok=!!d.file;
-    return `<div class="doc ${ok?'':(req?'req':'')}">${ok?'<span class="avl">Available</span>':(req?'<span class="reqm">Required</span>':'')}
-      <div class="nm">${label}${req?' *':''}</div>
-      <div class="thumb">${ok?'🖼 '+d.file:(req?'Required — not uploaded':'Optional — not uploaded')}</div>
-      ${exp&&d.exp?`<small class="exp">Expiry: ${d.exp}</small>`:''}${d.num?`<small class="exp">No: ${d.num}</small>`:''}</div>`}).join('');
-  return `<div class="sec"><div class="sh">👤 Personal Information</div><div class="sb"><div class="grid3">
-      ${vr('First Name',b.first)}${vr('Last Name',b.last)}${vr('Phone',b.phone||cur.phone)}
-      ${vr('Alt Phone',b.alt)}${vr('Email',b.email)}${vr('Language',b.lang)}</div></div></div>
-    <div class="sec"><div class="sh">🏬 Business Information</div><div class="sb">
-      <div class="grid3" style="margin-bottom:14px">${vr('Shop name',b.shop)}${vr('Shop type',b.shoptype)}${vr('PAN number',b.pan)}</div>
-      <div class="grid3">${vr('Shop address',b.addr)}${vr('City',b.city)}${vr('Pincode',b.pin)}</div>
-      <div class="grid3" style="margin-top:14px">${vr('State',b.state)}${vr('Country',b.country||'India')}${vr('',' ')}</div></div></div>
-    <div class="sec"><div class="sh">📄 Licences &amp; Documents <span class="hint" style="font-weight:500;margin-left:6px">${reqDone()}/${REQ_DOCS.length} required uploaded</span></div>
-      <div class="sb"><div class="grid3">${docView}</div></div></div>`;
+  if(!filledAny()) return `<div class="banner blue" style="margin-bottom:6px">📝 No retailer details captured yet. Click <b>✎ Edit all details</b> (top-right) to fill profile type, personal info, business info and documents — all in one place.</div>`;
+  const vr=(l,v)=>`<div class="cv"><span class="cl">${l}</span><span class="cvv">${v||'<span class="muted">—</span>'}</span></div>`;
+  const dchips=DOCS.map(([k,label,req,exp])=>{const d=s.docs[k]||{},ok=!!d.file;
+    return `<div class="dchip ${ok?'':(req?'req':'')}">${ok?'<span class="pill green">✓</span>':(req?'<span class="pill red">!</span>':'<span class="pill grey">○</span>')}
+      <b>${label}${req?' *':''}</b><span class="x">${ok?(exp&&d.exp?d.exp:'uploaded'):(req?'required':'optional')}</span></div>`}).join('');
+  return `<div class="vpanel">
+    <div class="vhdr">🏷 Profile Type</div>
+    <div class="vgrid">${vr('Profile / Customer type',b.ptype)}</div>
+    <div class="vhdr">👤 Personal Information</div>
+    <div class="vgrid">${vr('First Name',b.first)}${vr('Last Name',b.last)}${vr('Phone',b.phone||cur.phone)}${vr('Alt Phone',b.alt)}${vr('Email',b.email)}${vr('Language',b.lang)}</div>
+    <div class="vhdr">🏬 Business Information</div>
+    <div class="vgrid">${vr('Shop name',b.shop)}${vr('Shop type',b.shoptype)}${vr('PAN number',b.pan)}${vr('Shop address',b.addr)}${vr('City',b.city)}${vr('Pincode',b.pin)}${vr('State',b.state)}${vr('Country',b.country||'India')}</div>
+    <div class="vhdr">📄 Licences &amp; Documents <span class="n">${reqDone()}/${REQ_DOCS.length} required uploaded</span></div>
+    <div class="docg">${dchips}</div>
+  </div>`;
 }
 
 function editForm(){
@@ -325,26 +352,10 @@ function editForm(){
       <div class="grid3">${docEdit}</div></div></div>`;
 }
 
-function verifyBar(){
-  const s=st[cur.id];
-  if(s.verified) return `<div class="vstat ok"><div class="toggle on"><i></i></div>
-      <div style="flex:1"><b>Verified</b><div class="hint">Profile has been verified by the agent — handed off to the Retailer portal.</div></div>
-      <button class="btn" onclick="callPanel()">📞 Call Now</button></div>`;
-  const miss=missing();const ready=miss.length===0;
-  return `<div class="vstat"><div class="toggle"><i></i></div>
-      <div style="flex:1"><b>${ready?'Ready to verify':'Not Verified'}</b>
-        <div class="hint">${ready?'All required information & documents present.':'Need: '+miss.join(', ')+'. Click ✎ Edit all details to complete.'}</div></div></div>
-    <div class="actbar">
-      <button class="btn red sm" onclick="kycRefused()">Mark KYC refused</button>
-      <button class="btn" onclick="toast('Saved as draft','green')">💾 Save as Draft</button>
-      <button class="btn greenbright lg" style="margin-left:auto" ${ready?'':'disabled'} onclick="approve()">✓ Approve &amp; Verify KYC</button>
-    </div>`;
-}
-
 /* ---- state ---- */
 function filledAny(){const b=st[cur.id].b;return b.first||b.shop||b.pan||b.addr||b.state||reqDone()>0;}
 function reqDone(){const d=st[cur.id].docs;return REQ_DOCS.filter(k=>d[k]&&d[k].file).length;}
-function missing(){const b=st[cur.id].b,m=[];if(!b.first)m.push('first name');if(!b.shop)m.push('shop name');if(!b.pan)m.push('PAN');if(!b.addr)m.push('shop address');if(!b.state)m.push('state');const dl=REQ_DOCS.length-reqDone();if(dl>0)m.push(dl+' required document'+(dl>1?'s':''));return m;}
+function missing(){const b=st[cur.id].b,m=[];if(!b.ptype)m.push('profile type');if(!b.first)m.push('first name');if(!b.shop)m.push('shop name');if(!b.pan)m.push('PAN');if(!b.addr)m.push('shop address');if(!b.state)m.push('state');const dl=REQ_DOCS.length-reqDone();if(dl>0)m.push(dl+' required document'+(dl>1?'s':''));return m;}
 function enterEdit(){const s=st[cur.id];if(!s.b.first&&cur.name&&!cur.name.startsWith('(new)')){const p=cur.name.split(' ');s.b.first=p[0];s.b.last=p.slice(1).join(' ');}if(!s.b.phone)s.b.phone=cur.phone;if(!s.b.state&&cur.state)s.b.state=cur.state;s.editing=true;renderRI();}
 function saveEdit(){st[cur.id].editing=false;flag();toast('Details saved','green');renderRI();}
 function cancelEdit(){st[cur.id].editing=false;renderRI();}
