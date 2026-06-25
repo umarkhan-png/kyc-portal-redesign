@@ -104,6 +104,26 @@
   .vrow .lab{font-size:11px;color:var(--mut2);font-weight:600}
   .vrow .val{font-weight:600;margin-top:2px;font-size:13.5px}
   .vrow .val .muted{color:var(--mut2);font-weight:500}
+  /* lead body: timeline panel + main column */
+  .leadbody{display:flex;gap:14px;align-items:stretch}
+  .leadmain{flex:1;min-width:0}
+  .tlpane{width:286px;flex-shrink:0;background:#fff;border:1px solid var(--bd);border-radius:14px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+  .tlmini{width:42px;flex-shrink:0;background:#fff;border:1px solid var(--bd);border-radius:12px;box-shadow:var(--shadow);display:flex;justify-content:center;padding-top:13px;cursor:pointer;color:var(--mut2)}
+  .tlh{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--bd2);font-weight:700;font-size:12.5px;color:#374151}
+  .tlh .x{margin-left:auto;color:var(--mut2);cursor:pointer;font-size:16px;line-height:1}
+  .tltabs{display:flex;border-bottom:1px solid var(--bd2)}
+  .tltabs a{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px 4px;font-size:11.5px;font-weight:600;color:var(--mut);cursor:pointer;border-bottom:2px solid transparent}
+  .tltabs a.on{color:var(--green-d);border-bottom-color:var(--green)}
+  .tlbody{flex:1;min-height:160px;padding:14px}
+  .tlempty{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--mut2);gap:3px;padding:26px 8px}
+  .tlempty .ic svg{width:26px;height:26px;stroke:#c7cdd5}
+  .tlempty .t{font-weight:600;color:#6b7280;font-size:12.5px;margin-top:5px}.tlempty .s{font-size:11px;max-width:200px}
+  .tlev{display:flex;gap:9px;padding:6px 0}.tlev .d{width:9px;height:9px;border-radius:50%;background:var(--green);margin-top:5px;flex-shrink:0}
+  .tlev b{font-size:12.5px}.tlev .s{font-size:10.5px;color:var(--mut2)}
+  .tlcust{border-top:1px solid var(--bd2);padding:13px 14px;background:#fcfdfe}
+  .tlcust .lab{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--mut2);font-weight:700;margin-bottom:8px}
+  .tlcust .row{display:flex;align-items:center;gap:9px;padding:4px 0;font-size:12.5px;color:#374151}
+  .tlcust .row .ic svg{width:14px;height:14px;stroke:var(--mut2)}
   /* header KYC action row + hover checklist */
   .kactrow{border-top:1px solid var(--bd2);padding:12px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end}
   .kactrow.pending{background:#dfe4ea} .kactrow.approved{background:var(--green-bg)} .kactrow.rejected{background:var(--red-bg)}
@@ -361,20 +381,54 @@ function renderLead(){
       </div>
       <div class="acts"><button class="btn pill sm">${ic('sync','sm')} Sync</button><button class="btn pill sm">${ic('chat','sm')} WhatsApp</button><button class="btn green pill" onclick="callPanel()">${ic('phone','sm')} Call Now</button>${kycActionBar()}</div>
     </div></div>
-    <!-- pipeline -->
-    <div class="card"><div class="bd">
-      <div class="piphd"><div class="pi">${ic('activity')}</div><div><b>Lead Pipeline</b><small>LP-1296122 · KYC</small></div>
-        <div style="margin-left:auto;display:flex;gap:8px"><button class="btn sm">${ic('note','sm')} Add Remarks</button><span class="pill green" style="padding:6px 11px">${PIPE[Math.min(ci,7)]}</span></div></div>
-      <div class="lp">${chev}</div><div class="prog"><i style="width:${pct}%"></i></div>
-      <div class="legend"><span><i style="background:var(--green)"></i>Done</span><span><i style="background:var(--orange)"></i>Current</span><span><i style="background:#e9ecef"></i>Upcoming</span>${fix(3,'One unified pipeline')}</div>
-    </div></div>
-    <!-- tabs + retailer information -->
-    <div class="card" style="padding:0">
-      <div class="tabs2"><a class="on">Retailer Information</a><a>Timeline</a><a>Recordings <span class="ct">1</span></a><a>Address <span class="ct">0</span></a><a>Near Me</a><a>Notes</a><a>Follow up</a><a>WhatsApp</a><a>FAQs</a></div>
-      <div class="bd" id="ri"></div>
+    <div class="leadbody">
+      ${timelinePanel()}
+      <div class="leadmain">
+      <!-- pipeline -->
+      <div class="card"><div class="bd">
+        <div class="piphd"><div class="pi">${ic('activity')}</div><div><b>Lead Pipeline</b><small>LP-1296122 · KYC</small></div>
+          <div style="margin-left:auto;display:flex;gap:8px"><button class="btn sm">${ic('note','sm')} Add Remarks</button><span class="pill green" style="padding:6px 11px">${PIPE[Math.min(ci,7)]}</span></div></div>
+        <div class="lp">${chev}</div><div class="prog"><i style="width:${pct}%"></i></div>
+        <div class="legend"><span><i style="background:var(--green)"></i>Done</span><span><i style="background:var(--orange)"></i>Current</span><span><i style="background:#e9ecef"></i>Upcoming</span></div>
+      </div></div>
+      <!-- tabs + retailer information -->
+      <div class="card" style="padding:0">
+        <div class="tabs2"><a class="on">Retailer Information</a><a>Timeline</a><a>Recordings <span class="ct">1</span></a><a>Address <span class="ct">0</span></a><a>Near Me</a><a>Notes</a><a>Follow up</a><a>WhatsApp</a><a>FAQs</a></div>
+        <div class="bd" id="ri"></div>
+      </div>
+      </div>
     </div>`;
   renderRI();
 }
+
+/* ---- left Timeline panel (Notes / Activity / App + Customer Details) ---- */
+function timelinePanel(){
+  const s=st[cur.id];
+  if(s.tlHidden) return `<div class="tlmini" onclick="setTLHide(false)" title="Show timeline">${ic('activity')}</div>`;
+  const tab=s.tltab||'activity';
+  let body;
+  if(tab==='notes') body=emptyTL('note','No notes yet','Notes you add during a call show up here.');
+  else if(tab==='app') body=cur.app?eventTL('Partner app installed','Retailer has the app — pricing visible.'):emptyTL('phone','No app events found','Retailer has not installed the app yet.');
+  else body=s.callDone?eventTL('Connected call logged','Call disposition saved.'):emptyTL('activity','No activity yet','Call activity will appear here.');
+  return `<aside class="tlpane">
+    <div class="tlh">${ic('reopen','sm')} TIMELINE <span class="x" onclick="setTLHide(true)">×</span></div>
+    <div class="tltabs">
+      <a class="${tab==='notes'?'on':''}" onclick="setTLTab('notes')">${ic('note','sm')} Notes</a>
+      <a class="${tab==='activity'?'on':''}" onclick="setTLTab('activity')">${ic('activity','sm')} Activity</a>
+      <a class="${tab==='app'?'on':''}" onclick="setTLTab('app')">${ic('phone','sm')} App</a>
+    </div>
+    <div class="tlbody">${body}</div>
+    <div class="tlcust"><div class="lab">Customer Details</div>
+      <div class="row">${ic('users','sm')} ${cur.name}</div>
+      <div class="row">${ic('phone','sm')} ${maskPhone(cur.phone)}</div>
+      <div class="row">${ic('pin','sm')} ${cur.state||'—'}</div>
+      <div class="row">${ic('note','sm')} Source: ${cur.src}</div>
+    </div></aside>`;
+}
+function emptyTL(icon,title,sub){return `<div class="tlempty">${ic(icon)}<div class="t">${title}</div><div class="s">${sub}</div></div>`;}
+function eventTL(title,sub){return `<div class="tlev"><span class="d"></span><div><b>${title}</b><div class="s">${sub}</div><div class="s">Just now</div></div></div>`;}
+function setTLTab(t){st[cur.id].tltab=t;renderLead();}
+function setTLHide(v){st[cur.id].tlHidden=v;renderLead();}
 
 /* ---- Retailer Information: VIEW -> EDIT (all in one place) -> APPROVE ---- */
 function renderRI(){
