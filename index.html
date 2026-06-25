@@ -58,6 +58,9 @@
   .btn.kapprove:not(:disabled){animation:kpulse 2.6s ease-in-out infinite}
   @keyframes kpulse{0%,100%{box-shadow:0 3px 12px rgba(26,164,92,.45)}50%{box-shadow:0 3px 17px rgba(26,164,92,.75)}}
   .btn.kapprove .ic svg{stroke-width:2.4}
+  .btn.editbtn{background:var(--green-bg);border:1.5px solid var(--green);color:var(--green-d);font-weight:700;font-size:13px;padding:9px 18px;border-radius:10px}
+  .btn.editbtn:hover{background:var(--green-l)}
+  .btn.editbtn:disabled{opacity:.55}
   .btn.red{color:var(--red);border-color:var(--red-bd);background:var(--red-bg)}
   .btn.pill{border-radius:999px}.btn.sm{padding:5px 10px;font-size:12px;border-radius:8px}
   .btn.lg{padding:13px 26px;font-size:15px;border-radius:12px;font-weight:700}
@@ -439,12 +442,12 @@ function setTLHide(v){st[cur.id].tlHidden=v;renderLead();}
 /* ---- Retailer Information: VIEW -> EDIT (all in one place) -> APPROVE ---- */
 function renderRI(){
   const s=st[cur.id], callOk=!!s.callDone;
-  const slim=`<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:13px">
+  const slim=`<div style="display:flex;justify-content:flex-start;gap:8px;margin-bottom:13px">
       ${s.editing
-        ? `<button class="btn sm" onclick="cancelEdit()">Cancel</button><button class="btn green sm" onclick="saveEdit()">${ic('save','sm')} Save</button>`
+        ? `<button class="btn editbtn" onclick="saveEdit()">${ic('save','sm')} Save details</button><button class="btn sm" onclick="cancelEdit()">Cancel</button>`
         : (callOk
-            ? `<button class="btn sm" onclick="enterEdit()">${ic('edit','sm')} Edit all details</button>`
-            : `<span class="tip" data-tip="Connect a call first to edit"><button class="btn sm" disabled>${ic('edit','sm')} Edit all details</button></span>`)}
+            ? `<button class="btn editbtn" onclick="enterEdit()">${ic('edit','sm')} Edit all details</button>`
+            : `<span class="tip" data-tip="Connect a call first to edit"><button class="btn editbtn" disabled>${ic('edit','sm')} Edit all details</button></span>`)}
       </div>`;
   document.getElementById('ri').innerHTML = slim + profileTypeSec() + docsBlock() + personalBlock() + businessBlock();
 }
