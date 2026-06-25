@@ -93,6 +93,11 @@
   .vrow .lab{font-size:11px;color:var(--mut2);font-weight:600}
   .vrow .val{font-weight:600;margin-top:2px;font-size:13.5px}
   .vrow .val .muted{color:var(--mut2);font-weight:500}
+  /* KYC status pill (traffic-light) */
+  .kstat{font-size:13.5px;font-weight:800;padding:10px 16px;border-radius:11px;display:inline-flex;gap:7px;align-items:center;border:1.5px solid}
+  .kstat.n{background:#f1f3f5;color:#6b7280;border-color:#dde1e6}
+  .kstat.g{background:var(--green-bg);color:var(--green-d);border-color:var(--green)}
+  .kstat.r{background:var(--red-bg);color:var(--red);border-color:var(--red-bd)}
   /* compact read-only view */
   .vpanel{border:1px solid var(--bd2);border-radius:12px;padding:2px 16px 14px;background:#fcfdfe}
   .vhdr{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--green-d);padding:13px 0 9px;border-bottom:1px solid var(--bd2);margin-bottom:11px;display:flex;align-items:center;gap:7px}
@@ -246,7 +251,7 @@ function dial(){const num=document.getElementById('dialin').value.trim();if(!num
 /* ===================== LEAD DETAILS PAGE (Module B) ===================== */
 function openLead(id){
   cur=LEADS.find(l=>l.id===id);
-  if(!st[id])st[id]={stage:'kyc',editing:false,verified:false,b:{ptype:'Retailer'},docs:{}};
+  if(!st[id])st[id]={stage:'kyc',editing:false,verified:false,rejected:false,b:{ptype:'Retailer'},docs:{}};
   renderLead();
 }
 function stageIx(s){return s.verified?8:6;}
@@ -290,16 +295,29 @@ function renderRI(){
 function topBar(){
   const s=st[cur.id];
   const miss=missing(), ready=miss.length===0;
+  const status=s.verified?'approved':s.rejected?'rejected':'pending';
+  const pill=status==='approved'?'<span class="kstat g">✓ KYC Approved</span>'
+            :status==='rejected'?'<span class="kstat r">✕ KYC Rejected</span>'
+            :'<span class="kstat n">● Not Approved</span>';
+  let actions;
+  if(status==='pending'){
+    actions=`<button class="btn red sm" onclick="rejectKyc()">✕ Reject</button>
+             <button class="btn greenbright lg" ${ready?'':'disabled'} onclick="approve()">✓ Approve &amp; Verify KYC</button>`;
+  } else {
+    actions=`<button class="btn sm" onclick="reopenKyc()">↺ Re-open</button>`;
+  }
   return `<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:13px;flex-wrap:wrap">
       <div style="flex:1;min-width:200px"><b style="font-size:14px">Retailer Information</b><div class="hint">Complete retailer profile for app-installed retailers.</div>
         <div style="margin-top:7px;display:flex;gap:14px"><span class="sq draft">Draft (not from API)</span><span class="sq api">API data</span></div></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
         ${s.editing?`<button class="btn sm" onclick="cancelEdit()">Cancel</button><button class="btn green sm" onclick="saveEdit()">💾 Save</button>`
                    :`<button class="btn sm" onclick="enterEdit()">✎ Edit all details ${fix(5,'Edit every field — personal, business & documents — in one place')}</button><button class="btn sm" onclick="toast('Saved','green')">💾 Save</button>`}
-        ${s.verified?'<span class="pill green" style="padding:9px 15px;font-size:13px">✓ Verified &amp; handed off</span>'
-          :`<button class="btn greenbright lg" ${ready?'':'disabled'} onclick="approve()">✓ Approve &amp; Verify KYC</button>`}
+        ${pill}
+        ${s.editing?'':actions}
       </div></div>
-    ${s.verified?'':ready?`<div class="banner green" style="margin-bottom:14px">✅ All required information &amp; documents present — ready to approve.</div>`
+    ${status==='approved'?`<div class="banner green" style="margin-bottom:14px">✅ KYC approved &amp; handed off to the Retailer portal.</div>`
+      :status==='rejected'?`<div class="banner amber" style="margin-bottom:14px;border-color:var(--red-bd);background:var(--red-bg);color:var(--red)">⛔ KYC rejected — visible &amp; re-openable for a future attempt.</div>`
+      :ready?`<div class="banner green" style="margin-bottom:14px">✅ All required information &amp; documents present — ready to approve.</div>`
       :`<div class="banner amber" style="margin-bottom:14px">⚠️ To approve, still needed: <b>${miss.join(', ')}</b>. Click <b>✎ Edit all details</b>.</div>`}`;
 }
 
@@ -362,8 +380,9 @@ function cancelEdit(){st[cur.id].editing=false;renderRI();}
 function setB(k,v){st[cur.id].b[k]=v;flag();}
 function setDoc(k,f,v){const d=st[cur.id].docs;d[k]=d[k]||{};d[k][f]=v;flag();}
 function upDoc(k){const d=st[cur.id].docs;d[k]=d[k]||{};d[k].file='scan_'+k+'.jpg';flag();toast('Document uploaded & auto-saved','green');renderRI();}
-function approve(){const s=st[cur.id];s.verified=true;s.editing=false;cur.status='Verified';cur.incomplete=false;toast('✓ KYC approved & verified — handed off to Retailer portal','green');renderLead();}
-function kycRefused(){cur.status='KYC refused';toast('Marked “KYC refused” — visible & re-openable','green');go('inbox');}
+function approve(){const s=st[cur.id];s.verified=true;s.rejected=false;s.editing=false;cur.status='Verified';cur.incomplete=false;toast('✓ KYC approved & verified — handed off to Retailer portal','green');renderLead();}
+function rejectKyc(){const s=st[cur.id];s.rejected=true;s.verified=false;s.editing=false;cur.status='KYC rejected';cur.incomplete=false;toast('✕ KYC rejected — visible & re-openable for a future attempt','green');renderLead();}
+function reopenKyc(){const s=st[cur.id];s.verified=false;s.rejected=false;cur.status='Incomplete';cur.incomplete=true;toast('Re-opened — status reset to pending','green');renderLead();}
 
 /* ===================== CALL + disposition ===================== */
 function callPanel(mode){let secs=mode==='short'?6:mode==='ok'?24:0;
