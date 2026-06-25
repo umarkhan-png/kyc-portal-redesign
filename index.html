@@ -47,6 +47,11 @@
   .btn:hover{background:#f9fafb}
   .btn.green{background:var(--green);border-color:var(--green);color:#fff}.btn.green:hover{background:var(--green-d)}
   .btn.greenbright{background:linear-gradient(180deg,var(--green-2),var(--green));border-color:var(--green);color:#fff;box-shadow:0 4px 13px rgba(26,164,92,.4)}
+  .btn.kapprove{background:linear-gradient(180deg,var(--green-2),var(--green));border:1.5px solid var(--green-d);color:#fff;font-size:14px;font-weight:800;padding:11px 26px;border-radius:999px;box-shadow:0 6px 18px rgba(26,164,92,.5);letter-spacing:.01em}
+  .btn.kapprove:hover{background:var(--green-d)}
+  .btn.kapprove:not(:disabled){animation:kpulse 2.4s ease-in-out infinite}
+  @keyframes kpulse{0%,100%{box-shadow:0 6px 18px rgba(26,164,92,.5)}50%{box-shadow:0 6px 24px rgba(26,164,92,.85)}}
+  .btn.kapprove .ic svg{width:18px;height:18px;stroke-width:2.4}
   .btn.red{color:var(--red);border-color:var(--red-bd);background:var(--red-bg)}
   .btn.pill{border-radius:999px}.btn.sm{padding:5px 10px;font-size:12px;border-radius:8px}
   .btn.lg{padding:13px 26px;font-size:15px;border-radius:12px;font-weight:700}
@@ -396,7 +401,7 @@ function kycActionBar(){
   if(s.verified) return `<span class="kmsg g">${ic('check')} Approved &amp; handed off</span><button class="btn sm" onclick="reopenKyc()">${ic('reopen','sm')} Re-open</button>`;
   if(s.rejected)  return `<span class="kmsg r">${ic('x')} Rejected</span><button class="btn sm" onclick="reopenKyc()">${ic('reopen','sm')} Re-open</button>`;
   const ready=checks().every(c=>c.ok);
-  return `<span class="apwrap" onmouseenter="refreshChecks(this)"><button class="btn greenbright pill" ${ready?'':'disabled'} onclick="approve()">${ic('check')} Approve KYC</button>
+  return `<span class="apwrap" onmouseenter="refreshChecks(this)"><button class="btn kapprove" ${ready?'':'disabled'} onclick="approve()">${ic('check')} Approve KYC</button>
       <div class="popchk">${checkPop()}</div></span>`;
 }
 /* live checklist used by the hover popover — always reflects the ACTUAL current state */
