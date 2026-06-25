@@ -123,7 +123,8 @@
   .cl{font-size:10px;color:var(--mut2);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
   .cvv{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cvv .muted{color:#c2c7cf;font-weight:500}
-  .docg{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:2px}
+  .docg{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:2px}
+  .dlab{font-size:10.5px;color:var(--mut2);font-weight:600;margin-bottom:4px;display:block}
   .dchip{display:flex;align-items:center;gap:8px;border:1px solid var(--bd2);border-radius:9px;padding:8px 10px;font-size:12px;background:#fff}
   .dchip.req{border-color:var(--red-bd);background:#fff8f8}
   .dchip b{font-size:12px;font-weight:600} .dchip .x{margin-left:auto;font-size:10px;color:var(--mut2)}
@@ -228,12 +229,17 @@ const REASONS=["Verification Complete","Partial Verification","Callback Requeste
 const PIPE=['Not Performed','Not Answered','Profile Pending','Profiled','App Download Pending','App Downloaded','Docs Upload','KYC Done'];
 const LANGS=['Hindi','English','Punjabi','Marathi','Telugu','Tamil','Bengali','Gujarati'];
 const SHOPTYPES=['Retail shop','Wholesale','Agri input store','Other'];
-/* documents: key,label,required,hasExpiry */
+/* documents: key,label,required,hasExpiry,hasNumber,numberPlaceholder
+   — Aadhaar / PAN / GST: number only, NO date; licences: number + expiry date; profile image: neither */
 const DOCS=[
-  ['aadhaarF','Aadhaar — Front',true,false],['aadhaarB','Aadhaar — Back',true,false],
-  ['pesticide','Pesticide Licence',true,true],['fertilizer','Fertilizer Licence',true,true],
-  ['pan','PAN Card',false,false],['gst','GST Certificate',false,false],
-  ['seed','Seed Licence',false,true],['profile','Profile Image',false,false],
+  ['aadhaarF','Aadhaar — Front',true,false,true,'Aadhaar number'],
+  ['aadhaarB','Aadhaar — Back',true,false,false,''],
+  ['pesticide','Pesticide Licence',true,true,true,'Licence number'],
+  ['fertilizer','Fertilizer Licence',true,true,true,'Licence number'],
+  ['pan','PAN Card',false,false,true,'PAN number'],
+  ['gst','GST Certificate',false,false,true,'GSTIN'],
+  ['seed','Seed Licence',false,true,true,'Licence number'],
+  ['profile','Profile Image',false,false,false,''],
 ];
 const REQ_DOCS=DOCS.filter(d=>d[2]).map(d=>d[0]);
 
@@ -376,9 +382,11 @@ function profileTypeSec(){
 function viewBlock(){
   const s=st[cur.id],b=s.b;
   const vr=(l,v)=>`<div class="cv"><span class="cl">${l}</span><span class="cvv">${v||'<span class="muted">—</span>'}</span></div>`;
-  const dchips=DOCS.map(([k,label,req,exp])=>{const d=s.docs[k]||{},ok=!!d.file;
+  const dchips=DOCS.map(([k,label,req,exp,hasNum])=>{const d=s.docs[k]||{},ok=!!d.file;
+    let meta=[];if(hasNum&&d.num)meta.push(d.num);if(exp&&d.exp)meta.push('Exp '+d.exp);
+    const right=ok?(meta.length?meta.join(' · '):'uploaded'):(req?'required':'optional');
     return `<div class="dchip ${ok?'':(req?'req':'')}"><span class="dmark ${ok?'ok':(req?'no':'op')}">${ok?'✓':(req?'!':'–')}</span>
-      <b>${label}${req?' *':''}</b><span class="x">${ok?(exp&&d.exp?d.exp:'uploaded'):(req?'required':'optional')}</span></div>`}).join('');
+      <div style="min-width:0"><b>${label}${req?' *':''}</b><div class="x" style="margin:0">${right}</div></div></div>`}).join('');
   return `<div class="vpanel">
     <div class="vhdr">Profile Type</div>
     <div class="vgrid">${vr('Profile / Customer type',b.ptype)}</div>
@@ -395,12 +403,12 @@ function editForm(){
   const s=st[cur.id],b=s.b;
   const f=(lab,key,ph,req)=>`<div class="field"><label class="${req?'req':''}">${lab}</label><input value="${b[key]||''}" oninput="setB('${key}',this.value)" placeholder="${ph||''}"></div>`;
   const sel=(lab,key,opts,req)=>`<div class="field"><label class="${req?'req':''}">${lab}</label><select onchange="setB('${key}',this.value)">${['<option value="">— Select —</option>'].concat(opts.map(o=>`<option ${b[key]===o?'selected':''}>${o}</option>`)).join('')}</select></div>`;
-  const docEdit=DOCS.map(([k,label,req,exp])=>{const d=s.docs[k]||{},ok=!!d.file;
+  const docEdit=DOCS.map(([k,label,req,exp,hasNum,nph])=>{const d=s.docs[k]||{},ok=!!d.file;
     return `<div class="doc ${ok?'':(req?'req':'')}">${ok?'<span class="avl">Available</span>':(req?'<span class="reqm">Required</span>':'')}
       <div class="nm">${label}${req?' *':''}</div>
       <div class="upl ${ok?'':(req?'r':'')}" onclick="upDoc('${k}')">${ok?ic('check')+' '+d.file+'<small class=hint>Tap to replace</small>':ic('upload')+'<span>Upload</span><small class=hint>Images/PDF · max 10MB</small>'}</div>
-      <div class="field" style="margin-top:8px"><input placeholder="Document number" value="${d.num||''}" oninput="setDoc('${k}','num',this.value)"></div>
-      ${exp?`<div class="field" style="margin-top:8px"><input type="date" value="${d.exp||''}" oninput="setDoc('${k}','exp',this.value)"></div>`:''}</div>`}).join('');
+      ${hasNum?`<div class="field" style="margin-top:8px"><label class="dlab">Document number</label><input placeholder="${nph||'Document number'}" value="${d.num||''}" oninput="setDoc('${k}','num',this.value)"></div>`:''}
+      ${exp?`<div class="field" style="margin-top:8px"><label class="dlab">Expiry date</label><input type="date" value="${d.exp||''}" oninput="setDoc('${k}','exp',this.value)"></div>`:''}</div>`}).join('');
   return `<div class="sec"><div class="sh">Personal Information</div><div class="sb"><div class="grid3">
       ${f('First Name','first','First name',true)}${f('Last Name','last','Last name')}${f('Phone','phone',cur.phone,true)}
       ${f('Alt Phone','alt','Alternate number')}${f('Email','email','name@email.com')}${sel('Language','lang',LANGS,true)}</div></div></div>
