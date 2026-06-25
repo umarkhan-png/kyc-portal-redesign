@@ -97,8 +97,12 @@
   .vrow .val{font-weight:600;margin-top:2px;font-size:13.5px}
   .vrow .val .muted{color:var(--mut2);font-weight:500}
   /* header KYC action row + hover checklist */
-  .kactrow{border-top:1px solid var(--bd2);padding:12px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-  .kactrow.pending{background:#eef1f4} .kactrow.approved{background:var(--green-bg)} .kactrow.rejected{background:var(--red-bg)}
+  .kactrow{border-top:1px solid var(--bd2);padding:12px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end}
+  .kactrow.pending{background:#dfe4ea} .kactrow.approved{background:var(--green-bg)} .kactrow.rejected{background:var(--red-bg)}
+  /* hover tooltip */
+  .tip{position:relative;display:inline-block}
+  .tip:hover:after{content:attr(data-tip);position:absolute;right:0;top:calc(100% + 7px);background:#1f2733;color:#fff;font-size:11px;font-weight:600;padding:6px 10px;border-radius:7px;white-space:nowrap;z-index:40;box-shadow:var(--shadow-lg)}
+  .tip:hover:before{content:"";position:absolute;right:14px;top:calc(100% + 2px);border:5px solid transparent;border-bottom-color:#1f2733;z-index:40}
   .kmsg{font-weight:800;font-size:13.5px;display:inline-flex;gap:6px;align-items:center}
   .kmsg.g{color:var(--green-d)} .kmsg.r{color:var(--red)}
   .apwrap{position:relative;display:inline-block}
@@ -137,11 +141,21 @@
   .doc.req{border-color:var(--red-bd);background:#fff8f8}
   .doc .avl{position:absolute;top:8px;right:8px;font-size:9.5px;font-weight:800;color:#fff;background:var(--green);border-radius:6px;padding:2px 7px}
   .doc .reqm{position:absolute;top:8px;right:8px;font-size:9.5px;font-weight:800;color:#fff;background:var(--red);border-radius:6px;padding:2px 7px}
-  .doc .nm{font-size:12.5px;font-weight:700}
-  .doc .thumb{height:74px;border-radius:8px;background:#eef1f4 center/cover;margin:9px 0;display:grid;place-items:center;color:#9aa3af;font-size:11px;overflow:hidden}
-  .doc .upl{width:100%;border:1px dashed #b9d8c4;background:#fff;border-radius:9px;padding:18px 9px;font-weight:600;font-size:11.5px;color:var(--green-d);cursor:pointer;display:flex;flex-direction:column;gap:5px;justify-content:center;align-items:center;text-align:center}
+  .doc .nm{font-size:12px;font-weight:700}
+  .doc .upl{width:100%;border:1px dashed #b9d8c4;background:#fff;border-radius:8px;padding:10px 8px;margin-top:8px;font-weight:600;font-size:11px;color:var(--green-d);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-align:center}
   .doc .upl.r{border-color:var(--red-bd);color:var(--red)}
-  .doc small.exp{font-size:10.5px;color:var(--mut)}
+  .doceg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .doceg .doc{padding:10px}
+  .doceg .field input{padding:7px 9px;font-size:12px}
+  .doceg .dlab{margin-bottom:3px}
+  /* view doc cards (thumbnail + number) */
+  .dvgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:2px}
+  .dvc{border:1px solid var(--bd2);border-radius:10px;padding:9px;background:#fff}
+  .dvc.req{border-color:var(--red-bd);background:#fff8f8}
+  .dvc .t{height:62px;border-radius:7px;background:#eef1f4;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8a93a0;font-size:10px;overflow:hidden;margin-bottom:7px;text-align:center;padding:5px;gap:2px}
+  .dvc .t .ic svg{width:20px;height:20px}
+  .dvc .nm{font-size:12px;font-weight:600}
+  .dvc .mt{font-size:10.5px;color:var(--mut2);margin-top:2px}
   /* verification status */
   .vstat{border:1px solid var(--bd);border-radius:12px;padding:15px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#fbfcfd}
   .vstat.ok{background:var(--green-bg);border-color:var(--green-l)}
@@ -349,13 +363,14 @@ function renderLead(){
 /* ---- Retailer Information: VIEW -> EDIT (all in one place) -> APPROVE ---- */
 function renderRI(){
   const s=st[cur.id], callOk=!!s.callDone;
-  const slim=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:13px">
-      ${callOk?'':`<span class="hint" style="color:var(--amber);display:flex;align-items:center;gap:6px">${ic('phone','sm')} Connect a call first to edit retailer details</span>`}
-      <div style="margin-left:auto;display:flex;gap:8px">
-      ${s.editing?`<button class="btn sm" onclick="cancelEdit()">Cancel</button><button class="btn green sm" onclick="saveEdit()">${ic('save','sm')} Save</button>`
-                 :`<button class="btn sm" ${callOk?'':'disabled'} onclick="enterEdit()">${ic('edit','sm')} Edit all details</button><button class="btn sm" ${callOk?'':'disabled'} onclick="toast('Saved','green')">${ic('save','sm')} Save</button>`}
-      </div></div>`;
-  document.getElementById('ri').innerHTML = slim + (s.editing ? (profileTypeSec()+editForm()) : viewBlock());
+  const slim=`<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:13px">
+      ${s.editing
+        ? `<button class="btn sm" onclick="cancelEdit()">Cancel</button><button class="btn green sm" onclick="saveEdit()">${ic('save','sm')} Save</button>`
+        : (callOk
+            ? `<button class="btn sm" onclick="enterEdit()">${ic('edit','sm')} Edit all details</button>`
+            : `<span class="tip" data-tip="Connect a call first to edit"><button class="btn sm" disabled>${ic('edit','sm')} Edit all details</button></span>`)}
+      </div>`;
+  document.getElementById('ri').innerHTML = slim + profileTypeSec() + docsBlock() + personalBlock() + businessBlock();
 }
 
 /* mandatory checks for approval (shown on hover over Approve) */
@@ -381,54 +396,55 @@ function kycActionBar(){
       <div class="popchk"><h5>${ready?'All checks passed — ready':pend+' pending check'+(pend>1?'s':'')+' for approval'}</h5>${items}</div></span>`;
 }
 
-/* profile type — above Personal Information (as in live); edit-mode only */
+/* ----- field/value helpers ----- */
+function ef(lab,key,ph,req){const b=st[cur.id].b;return `<div class="field"><label class="${req?'req':''}">${lab}</label><input value="${b[key]||''}" oninput="setB('${key}',this.value)" placeholder="${ph||''}"></div>`;}
+function es(lab,key,opts,req){const b=st[cur.id].b;return `<div class="field"><label class="${req?'req':''}">${lab}</label><select onchange="setB('${key}',this.value)">${['<option value="">— Select —</option>'].concat(opts.map(o=>`<option ${b[key]===o?'selected':''}>${o}</option>`)).join('')}</select></div>`;}
+function vrow(l,v){return `<div class="cv"><span class="cl">${l}</span><span class="cvv">${v||'<span class="muted">—</span>'}</span></div>`;}
+function secBox(title,extra,inner){return `<div class="sec"><div class="sh">${title}${extra||''}</div><div class="sb">${inner}</div></div>`;}
+
+/* Order: Profile Type → Licences & Documents → Personal Information → Business Information */
 function profileTypeSec(){
-  const b=st[cur.id].b, types=['Farmer','Retailer','Distributor','Other / Non-agri'];
-  return `<div class="sec"><div class="sh">Profile Type</div><div class="sb"><div class="grid3"><div class="field"><label class="req">Profile / Customer type</label>
-    <select onchange="setB('ptype',this.value)">${['<option value="">— Select —</option>'].concat(types.map(t=>`<option ${b.ptype===t?'selected':''}>${t}</option>`)).join('')}</select></div></div></div></div>`;
+  const s=st[cur.id], b=s.b, types=['Farmer','Retailer','Distributor','Other / Non-agri'];
+  const inner=s.editing
+    ? `<div class="grid3"><div class="field"><label class="req">Profile / Customer type</label><select onchange="setB('ptype',this.value)">${['<option value="">— Select —</option>'].concat(types.map(t=>`<option ${b.ptype===t?'selected':''}>${t}</option>`)).join('')}</select></div></div>`
+    : `<div class="vgrid">${vrow('Profile / Customer type',b.ptype)}</div>`;
+  return secBox('Profile Type','',inner);
 }
-
-function viewBlock(){
-  const s=st[cur.id],b=s.b;
-  const vr=(l,v)=>`<div class="cv"><span class="cl">${l}</span><span class="cvv">${v||'<span class="muted">—</span>'}</span></div>`;
-  const dchips=DOCS.map(([k,label,req,exp,hasNum])=>{const d=s.docs[k]||{},ok=!!d.file;
-    let meta=[];if(hasNum&&d.num)meta.push(d.num);if(exp&&d.exp)meta.push('Exp '+d.exp);
-    const right=ok?(meta.length?meta.join(' · '):'uploaded'):(req?'required':'optional');
-    return `<div class="dchip ${ok?'':(req?'req':'')}"><span class="dmark ${ok?'ok':(req?'no':'op')}">${ok?'✓':(req?'!':'–')}</span>
-      <div style="min-width:0"><b>${label}${req?' *':''}</b><div class="x" style="margin:0">${right}</div></div></div>`}).join('');
-  return `<div class="vpanel">
-    <div class="vhdr">Profile Type</div>
-    <div class="vgrid">${vr('Profile / Customer type',b.ptype)}</div>
-    <div class="vhdr">Personal Information</div>
-    <div class="vgrid">${vr('First Name',b.first)}${vr('Last Name',b.last)}${vr('Phone',b.phone||cur.phone)}${vr('Alt Phone',b.alt)}${vr('Email',b.email)}${vr('Language',b.lang)}</div>
-    <div class="vhdr">Business Information</div>
-    <div class="vgrid">${vr('Shop name',b.shop)}${vr('Shop type',b.shoptype)}${vr('PAN number',b.pan)}${vr('Shop address',b.addr)}${vr('City',b.city)}${vr('Pincode',b.pin)}${vr('State',b.state)}${vr('Country',b.country||'India')}</div>
-    <div class="vhdr">Licences &amp; Documents <span class="n">${reqDone()}/${REQ_DOCS.length} required uploaded</span></div>
-    <div class="docg">${dchips}</div>
-  </div>`;
-}
-
-function editForm(){
-  const s=st[cur.id],b=s.b;
-  const f=(lab,key,ph,req)=>`<div class="field"><label class="${req?'req':''}">${lab}</label><input value="${b[key]||''}" oninput="setB('${key}',this.value)" placeholder="${ph||''}"></div>`;
-  const sel=(lab,key,opts,req)=>`<div class="field"><label class="${req?'req':''}">${lab}</label><select onchange="setB('${key}',this.value)">${['<option value="">— Select —</option>'].concat(opts.map(o=>`<option ${b[key]===o?'selected':''}>${o}</option>`)).join('')}</select></div>`;
-  const docEdit=DOCS.map(([k,label,req,exp,hasNum,nph])=>{const d=s.docs[k]||{},ok=!!d.file;
-    return `<div class="doc ${ok?'':(req?'req':'')}">${ok?'<span class="avl">Available</span>':(req?'<span class="reqm">Required</span>':'')}
+function docsBlock(){
+  const s=st[cur.id];
+  const extra=` <span style="font-weight:500;color:var(--mut2);font-size:11px;margin-left:6px">${reqDone()}/${REQ_DOCS.length} required uploaded</span>`;
+  if(s.editing){
+    const docEdit=DOCS.map(([k,label,req,exp,hasNum,nph])=>{const d=s.docs[k]||{},ok=!!d.file;
+      return `<div class="doc ${ok?'':(req?'req':'')}">${ok?'<span class="avl">Available</span>':(req?'<span class="reqm">Required</span>':'')}
+        <div class="nm">${label}${req?' *':''}</div>
+        <div class="upl ${ok?'':(req?'r':'')}" onclick="upDoc('${k}')">${ok?ic('check','sm')+' '+d.file:ic('upload','sm')+' Upload'}</div>
+        ${hasNum?`<div class="field" style="margin-top:6px"><label class="dlab">${nph||'Document number'}</label><input placeholder="${nph||'Document number'}" value="${d.num||''}" oninput="setDoc('${k}','num',this.value)"></div>`:''}
+        ${exp?`<div class="field" style="margin-top:6px"><label class="dlab">Expiry date</label><input type="date" value="${d.exp||''}" oninput="setDoc('${k}','exp',this.value)"></div>`:''}</div>`}).join('');
+    return secBox('Licences &amp; Documents',extra,`<div class="hint" style="margin-bottom:10px">Images or PDF · max 10 MB</div><div class="doceg">${docEdit}</div>`);
+  }
+  const dv=DOCS.map(([k,label,req,exp,hasNum])=>{const d=s.docs[k]||{},ok=!!d.file;
+    return `<div class="dvc ${ok?'':(req?'req':'')}">
+      <div class="t">${ok?ic('note')+'<div>'+d.file+'</div>':(req?'<b style="color:var(--red)">Required</b>':'Optional')}</div>
       <div class="nm">${label}${req?' *':''}</div>
-      <div class="upl ${ok?'':(req?'r':'')}" onclick="upDoc('${k}')">${ok?ic('check')+' '+d.file+'<small class=hint>Tap to replace</small>':ic('upload')+'<span>Upload</span><small class=hint>Images/PDF · max 10MB</small>'}</div>
-      ${hasNum?`<div class="field" style="margin-top:8px"><label class="dlab">Document number</label><input placeholder="${nph||'Document number'}" value="${d.num||''}" oninput="setDoc('${k}','num',this.value)"></div>`:''}
-      ${exp?`<div class="field" style="margin-top:8px"><label class="dlab">Expiry date</label><input type="date" value="${d.exp||''}" oninput="setDoc('${k}','exp',this.value)"></div>`:''}</div>`}).join('');
-  return `<div class="sec"><div class="sh">Personal Information</div><div class="sb"><div class="grid3">
-      ${f('First Name','first','First name',true)}${f('Last Name','last','Last name')}${f('Phone','phone',cur.phone,true)}
-      ${f('Alt Phone','alt','Alternate number')}${f('Email','email','name@email.com')}${sel('Language','lang',LANGS,true)}</div></div></div>
-    <div class="sec"><div class="sh">Business Information</div><div class="sb">
-      <div class="grid3" style="margin-bottom:14px">${f('Shop name','shop','e.g. Khan Agro Centre',true)}${sel('Shop type','shoptype',SHOPTYPES)}${f('PAN number','pan','ABCDE1234F',true)}</div>
-      <div class="grid3" style="margin-bottom:14px">${f('Shop address','addr','Full address',true)}${f('City','city')}${f('Pincode','pin')}</div>
-      <div class="grid3">${sel('State','state',STATES,true)}${f('Country','country','India')}<div></div></div>
-      ${fix(8,'Full 28 states + 8 UTs incl. Jammu & Kashmir and Ladakh')}</div></div>
-    <div class="sec"><div class="sh">Licences &amp; Documents</div><div class="sb">
-      <div class="hint" style="margin-bottom:10px">Images or PDF · max 10 MB · ${reqDone()}/${REQ_DOCS.length} required uploaded</div>
-      <div class="grid3">${docEdit}</div></div></div>`;
+      ${hasNum&&d.num?`<div class="mt">No: ${d.num}</div>`:''}
+      ${exp&&d.exp?`<div class="mt">Exp: ${d.exp}</div>`:''}</div>`}).join('');
+  return secBox('Licences &amp; Documents',extra,`<div class="dvgrid">${dv}</div>`);
+}
+function personalBlock(){
+  const s=st[cur.id], b=s.b;
+  const inner=s.editing
+    ? `<div class="grid3">${ef('First Name','first','First name',true)}${ef('Last Name','last','Last name')}${ef('Phone','phone',cur.phone,true)}${ef('Alt Phone','alt','Alternate number')}${ef('Email','email','name@email.com')}${es('Language','lang',LANGS,true)}</div>`
+    : `<div class="vgrid">${vrow('First Name',b.first)}${vrow('Last Name',b.last)}${vrow('Phone',b.phone||cur.phone)}${vrow('Alt Phone',b.alt)}${vrow('Email',b.email)}${vrow('Language',b.lang)}</div>`;
+  return secBox('Personal Information','',inner);
+}
+function businessBlock(){
+  const s=st[cur.id], b=s.b;
+  const inner=s.editing
+    ? `<div class="grid3" style="margin-bottom:14px">${ef('Shop name','shop','e.g. Khan Agro Centre',true)}${es('Shop type','shoptype',SHOPTYPES)}${ef('PAN number','pan','ABCDE1234F',true)}</div>
+       <div class="grid3" style="margin-bottom:14px">${ef('Shop address','addr','Full address',true)}${ef('City','city')}${ef('Pincode','pin')}</div>
+       <div class="grid3">${es('State','state',STATES,true)}${ef('Country','country','India')}<div></div></div>`
+    : `<div class="vgrid">${vrow('Shop name',b.shop)}${vrow('Shop type',b.shoptype)}${vrow('PAN number',b.pan)}${vrow('Shop address',b.addr)}${vrow('City',b.city)}${vrow('Pincode',b.pin)}${vrow('State',b.state)}${vrow('Country',b.country||'India')}</div>`;
+  return secBox('Business Information','',inner);
 }
 
 /* ---- state ---- */
