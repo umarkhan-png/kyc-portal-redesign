@@ -301,10 +301,19 @@ function dial(){const num=document.getElementById('dialin').value.trim();if(!num
 /* ===================== LEAD DETAILS PAGE (Module B) ===================== */
 function openLead(id){
   cur=LEADS.find(l=>l.id===id);
-  if(!st[id])st[id]={stage:'kyc',editing:false,verified:false,rejected:false,callDone:false,b:{ptype:'Retailer'},docs:{}};
+  if(!st[id])st[id]={editing:false,verified:false,rejected:false,callDone:false,callAttempts:0,b:{ptype:'Retailer'},docs:{}};
   renderLead();
 }
-function stageIx(s){return s.verified?8:6;}
+function profileDone(){const b=st[cur.id].b;return !!(b.ptype&&b.first&&b.shop&&b.pan&&b.addr&&b.state);}
+/* live pipeline position derived from progress */
+function stageIx(s){
+  if(s.verified) return 8;                         // KYC Done (all complete)
+  if(reqDone()===REQ_DOCS.length && profileDone()) return 6; // Docs Upload
+  if(profileDone()) return cur.app?5:4;            // App Downloaded / App Download Pending
+  if(s.callDone) return 2;                          // Profile Pending
+  if(s.callAttempts>0) return 1;                    // Not Answered
+  return 0;                                         // Not Performed
+}
 function renderLead(){
   const s=st[cur.id];
   const ci=stageIx(s);
@@ -325,7 +334,7 @@ function renderLead(){
     <!-- pipeline -->
     <div class="card"><div class="bd">
       <div class="piphd"><div class="pi">${ic('activity')}</div><div><b>Lead Pipeline</b><small>LP-1296122 · KYC</small></div>
-        <div style="margin-left:auto;display:flex;gap:8px"><button class="btn sm">${ic('note','sm')} Add Remarks</button><span class="pill green" style="padding:6px 11px">${s.verified?'KYC Done':'Docs Upload'}</span></div></div>
+        <div style="margin-left:auto;display:flex;gap:8px"><button class="btn sm">${ic('note','sm')} Add Remarks</button><span class="pill green" style="padding:6px 11px">${PIPE[Math.min(ci,7)]}</span></div></div>
       <div class="lp">${chev}</div><div class="prog"><i style="width:${pct}%"></i></div>
       <div class="legend"><span><i style="background:var(--green)"></i>Done</span><span><i style="background:var(--orange)"></i>Current</span><span><i style="background:#e9ecef"></i>Upcoming</span>${fix(3,'One unified pipeline')}</div>
     </div></div>
@@ -339,10 +348,13 @@ function renderLead(){
 
 /* ---- Retailer Information: VIEW -> EDIT (all in one place) -> APPROVE ---- */
 function renderRI(){
-  const s=st[cur.id];
-  const slim=`<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:13px">
+  const s=st[cur.id], callOk=!!s.callDone;
+  const slim=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:13px">
+      ${callOk?'':`<span class="hint" style="color:var(--amber);display:flex;align-items:center;gap:6px">${ic('phone','sm')} Connect a call first to edit retailer details</span>`}
+      <div style="margin-left:auto;display:flex;gap:8px">
       ${s.editing?`<button class="btn sm" onclick="cancelEdit()">Cancel</button><button class="btn green sm" onclick="saveEdit()">${ic('save','sm')} Save</button>`
-                 :`<button class="btn sm" onclick="enterEdit()">${ic('edit','sm')} Edit all details</button><button class="btn sm" onclick="toast('Saved','green')">${ic('save','sm')} Save</button>`}</div>`;
+                 :`<button class="btn sm" ${callOk?'':'disabled'} onclick="enterEdit()">${ic('edit','sm')} Edit all details</button><button class="btn sm" ${callOk?'':'disabled'} onclick="toast('Saved','green')">${ic('save','sm')} Save</button>`}
+      </div></div>`;
   document.getElementById('ri').innerHTML = slim + (s.editing ? (profileTypeSec()+editForm()) : viewBlock());
 }
 
@@ -423,7 +435,9 @@ function editForm(){
 function filledAny(){const b=st[cur.id].b;return b.first||b.shop||b.pan||b.addr||b.state||reqDone()>0;}
 function reqDone(){const d=st[cur.id].docs;return REQ_DOCS.filter(k=>d[k]&&d[k].file).length;}
 function missing(){const b=st[cur.id].b,m=[];if(!b.ptype)m.push('profile type');if(!b.first)m.push('first name');if(!b.shop)m.push('shop name');if(!b.pan)m.push('PAN');if(!b.addr)m.push('shop address');if(!b.state)m.push('state');const dl=REQ_DOCS.length-reqDone();if(dl>0)m.push(dl+' required document'+(dl>1?'s':''));return m;}
-function enterEdit(){const s=st[cur.id];if(!s.b.first&&cur.name&&!cur.name.startsWith('(new)')){const p=cur.name.split(' ');s.b.first=p[0];s.b.last=p.slice(1).join(' ');}if(!s.b.phone)s.b.phone=cur.phone;if(!s.b.state&&cur.state)s.b.state=cur.state;s.editing=true;renderRI();}
+function enterEdit(){const s=st[cur.id];
+  if(!s.callDone){toast('Pehle ek connected call karein — uske baad hi details edit ho sakti hain.');callPanel();return;}
+  if(!s.b.first&&cur.name&&!cur.name.startsWith('(new)')){const p=cur.name.split(' ');s.b.first=p[0];s.b.last=p.slice(1).join(' ');}if(!s.b.phone)s.b.phone=cur.phone;if(!s.b.state&&cur.state)s.b.state=cur.state;s.editing=true;renderRI();}
 function saveEdit(){st[cur.id].editing=false;flag();toast('Details saved','green');renderRI();}
 function cancelEdit(){st[cur.id].editing=false;renderRI();}
 function setB(k,v){st[cur.id].b[k]=v;flag();}
@@ -432,22 +446,28 @@ function upDoc(k){const d=st[cur.id].docs;d[k]=d[k]||{};d[k].file='scan_'+k+'.jp
 function approve(){const s=st[cur.id];s.verified=true;s.rejected=false;s.editing=false;cur.status='Verified';cur.incomplete=false;toast('✓ KYC approved & verified — handed off to Retailer portal','green');renderLead();}
 function rejectKyc(){const s=st[cur.id];s.rejected=true;s.verified=false;s.editing=false;cur.status='KYC rejected';cur.incomplete=false;toast('✕ KYC rejected — visible & re-openable for a future attempt','green');renderLead();}
 function reopenKyc(){const s=st[cur.id];s.verified=false;s.rejected=false;cur.status='Incomplete';cur.incomplete=true;toast('Re-opened — status reset to pending','green');renderLead();}
-function markCallDone(){if(cur&&st[cur.id]){st[cur.id].callDone=true;renderLead();}}
+function markCallDone(){const s=st[cur.id];s.callDone=true;s.callAttempts=(s.callAttempts||0)+1;renderLead();}
 
 /* ===================== CALL + disposition ===================== */
-function callPanel(mode){let secs=mode==='short'?6:mode==='ok'?24:0;
-  openModal(`<div class="mh">📞 Call Disposition <span class="hint" style="font-weight:600">· ${cur.name} · ${cur.id}</span><span class="pill green" style="margin-left:auto">Connected</span></div>
-    <div class="mb"><div class="callbox"><div class="hint">Call duration (auto-captured) ${fix(2,'Connected/Not-Connected read from telephony — agent never picks it')}</div><div class="timer" id="ctimer">00:${String(secs).padStart(2,'0')}</div></div><div id="dispo"></div></div>`);
-  if(mode)finishCall(secs);else{callSecs=0;callTimer=setInterval(()=>{callSecs++;document.getElementById('ctimer').textContent='00:'+String(callSecs).padStart(2,'0');},1000);document.getElementById('dispo').innerHTML=`<button class="btn green" style="width:100%" onclick="endLive()">End call</button>`;}}
-function endLive(){clearInterval(callTimer);finishCall(callSecs);}
-function finishCall(secs){const T=15;const box=document.getElementById('dispo');
-  if(secs>=T){box.innerHTML=`<div class="banner green" style="margin-bottom:12px">✓ Connected ${secs}s (≥ ${T}s).</div>
+function callPanel(){
+  callSecs=0;
+  openModal(`<div class="mh">${ic('phone')} Call Disposition <span class="hint" style="font-weight:600">· ${cur.name} · ${cur.id}</span></div>
+    <div class="mb"><div class="callbox"><div class="hint">Call in progress…</div><div class="timer" id="ctimer">00:00</div></div>
+      <div id="dispo"><div style="display:flex;gap:10px">
+        <button class="btn green" style="flex:1" onclick="endCall(true)">End call — Connected</button>
+        <button class="btn" style="flex:1" onclick="endCall(false)">Not connected</button></div></div></div>`);
+  callTimer=setInterval(()=>{callSecs++;var t=document.getElementById('ctimer');if(t)t.textContent='00:'+String(callSecs).padStart(2,'0');},1000);
+}
+function endCall(connected){
+  clearInterval(callTimer);
+  const s=st[cur.id];
+  if(!connected){s.callAttempts=(s.callAttempts||0)+1;closeModal();toast('Not connected → moved to “Not Answered”, callback scheduled','green');renderLead();return;}
+  document.getElementById('dispo').innerHTML=`<div class="banner green" style="margin-bottom:12px">${ic('check')} Connected — ${callSecs}s</div>
     <div class="field" style="margin-bottom:11px"><label class="req">Reason</label><div class="chips">${REASONS.map(r=>`<div class="chip" onclick="this.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));this.classList.add('on')">${r}</div>`).join('')}</div></div>
     <div class="field" style="margin-bottom:11px"><label>Conversion probability</label><input type="range" min="0" max="100" value="50" style="width:100%"></div>
-    <div class="field" style="margin-bottom:12px"><label class="req">Notes</label><textarea rows="2" placeholder="Key points…"></textarea></div>
-    <button class="btn green" style="width:100%" onclick="markCallDone();closeModal();toast('Disposition saved — connected call logged','green')">Save Disposition</button>`;}
-  else if(secs>0){box.innerHTML=`<div class="banner amber" style="margin-bottom:12px">⏱️ Only ${secs}s (&lt; ${T}s) → Callback queue.</div><button class="btn green" style="width:100%" onclick="closeModal();toast('Queued for callback','green')">OK</button>`;}
-  else{box.innerHTML=`<div class="banner amber" style="margin-bottom:12px">☎️ Not connected → callback (+1 attempt).</div><button class="btn green" style="width:100%" onclick="closeModal();toast('Callback scheduled','green')">OK</button>`;}}
+    <div class="field" style="margin-bottom:12px"><label class="req">Notes</label><textarea rows="2" placeholder="Key points from the call…"></textarea></div>
+    <button class="btn greenbright" style="width:100%" onclick="markCallDone();closeModal();toast('Connected call logged — ab aap details edit kar sakte hain','green')">Save Disposition</button>`;
+}
 function toast(m,k){pushToast('',`<div style="display:flex;gap:9px;align-items:center"><span>${k==='green'?'✅':'ℹ️'}</span><div>${m}</div></div>`,3200);}
 function pushToast(c,h,ttl){const t=document.createElement('div');t.className='tcard '+(c||'');t.innerHTML=h;document.getElementById('toast').appendChild(t);if(ttl)setTimeout(()=>t.remove(),ttl);}
 function openModal(h){document.getElementById('modal').innerHTML=h;document.getElementById('ov').classList.add('show');}
