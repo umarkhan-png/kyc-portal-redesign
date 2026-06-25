@@ -23,7 +23,13 @@
   .ic.sm svg{width:14px;height:14px}
   .app{display:flex;min-height:100vh}
   /* ---------- sidebar ---------- */
-  .side{width:218px;background:#fff;border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh}
+  .side{width:218px;background:#fff;border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;transition:width .18s ease}
+  .side.mini{width:60px}
+  .side.mini .bt,.side.mini .lbl,.side.mini .ngrp,.side.mini .ainfo,.side.mini .nav a .ch{display:none}
+  .side.mini .brand{justify-content:center;padding:14px 0}
+  .side.mini .nav a{justify-content:center;padding:10px 0;border-left:0}
+  .side.mini .nav a.on{background:var(--green-bg);border-radius:0}
+  .side.mini .agent{justify-content:center;padding:11px 0}
   .brand{display:flex;align-items:center;gap:9px;padding:14px 16px;border-bottom:1px solid var(--bd2)}
   .brand .lg{width:30px;height:30px;border-radius:8px;background:var(--green);color:#fff;display:grid;place-items:center;font-weight:800}
   .brand b{font-size:13.5px}.brand small{display:block;color:var(--mut);font-size:10.5px}
@@ -245,21 +251,21 @@
 <div class="app">
   <!-- SIDEBAR -->
   <aside class="side">
-    <div class="brand"><div class="lg">✓</div><div><b>Verification Portal</b><small>Agent</small></div></div>
+    <div class="brand"><div class="lg">✓</div><div class="bt"><b>Verification Portal</b><small>Agent</small></div></div>
     <nav class="nav">
       <div class="ngrp">Main</div>
-      <a onclick="go('inbox')"><span class="ic" data-ic="grid"></span> My Dashboard</a>
-      <a class="on" id="nav-leads" onclick="go('inbox')"><span class="ic" data-ic="users"></span> My Leads</a>
-      <a onclick="go('inbox')"><span class="ic" data-ic="headset"></span> Working Module</a>
-      <a onclick="go('inbox')"><span class="ic" data-ic="verify"></span> My Verification</a>
+      <a onclick="go('inbox')" title="My Dashboard"><span class="ic" data-ic="grid"></span> <span class="lbl">My Dashboard</span></a>
+      <a class="on" id="nav-leads" onclick="go('inbox')" title="My Leads"><span class="ic" data-ic="users"></span> <span class="lbl">My Leads</span></a>
+      <a onclick="go('inbox')" title="Working Module"><span class="ic" data-ic="headset"></span> <span class="lbl">Working Module</span></a>
+      <a onclick="go('inbox')" title="My Verification"><span class="ic" data-ic="verify"></span> <span class="lbl">My Verification</span></a>
       <div class="ngrp">Performance <span style="float:right">›</span></div>
       <div class="ngrp">Learning <span style="float:right">›</span></div>
       <div class="ngrp">Support <span style="float:right">›</span></div>
       <div class="ngrp">System</div>
-      <a><span class="ic" data-ic="bell"></span> Notifications</a>
-      <a><span class="ic" data-ic="gear"></span> Settings</a>
+      <a title="Notifications"><span class="ic" data-ic="bell"></span> <span class="lbl">Notifications</span></a>
+      <a title="Settings"><span class="ic" data-ic="gear"></span> <span class="lbl">Settings</span></a>
     </nav>
-    <div class="agent"><div class="av">PK</div><div><b>Prativa Kar</b><small>Agent Id AO-1698</small></div></div>
+    <div class="agent"><div class="av">PK</div><div class="ainfo"><b>Prativa Kar</b><small>Agent Id AO-1698</small></div></div>
   </aside>
   <!-- MAIN -->
   <div class="main"><div class="content" id="content"></div></div>
@@ -331,6 +337,7 @@ function maskPhone(p){return p?('XXXXXX'+p.slice(-4)):''}
 /* ===================== INBOX ===================== */
 let inboxTab='open';
 function renderInbox(){
+  document.querySelector('.side').classList.remove('mini');
   const rows=LEADS.filter(l=>{if(inboxTab==='open')return l.status==='New'||l.incomplete;if(inboxTab==='callback')return l.status==='Callback due';return true;})
     .map(l=>`<tr class="lead" onclick="openLead('${l.id}')"><td><b>${l.name}</b><div class="hint">${l.id}</div></td><td>${l.phone}</td><td>${l.state}</td>
       <td>${l.app?'<span class="pill greenline">App Installed</span>':'<span class="pill grey">No app</span>'}</td><td>${badge(l)}</td>
@@ -367,6 +374,7 @@ function stageIx(s){
 }
 function renderLead(){
   const s=st[cur.id];
+  document.querySelector('.side').classList.add('mini');
   const ci=stageIx(s);
   const chev=PIPE.map((p,i)=>`<div class="stp ${i<ci?'':i===ci?'now':'todo'}">${i<ci?'✓ ':''}${p}</div>`).join('');
   const pct=Math.min(100,Math.round(ci/(PIPE.length-1)*100));
@@ -407,14 +415,12 @@ function timelinePanel(){
   if(s.tlHidden) return `<div class="tlmini" onclick="setTLHide(false)" title="Show timeline">${ic('activity')}</div>`;
   const tab=s.tltab||'activity';
   let body;
-  if(tab==='notes') body=emptyTL('note','No notes yet','Notes you add during a call show up here.');
-  else if(tab==='app') body=cur.app?eventTL('Partner app installed','Retailer has the app — pricing visible.'):emptyTL('phone','No app events found','Retailer has not installed the app yet.');
+  if(tab==='app') body=cur.app?eventTL('Partner app installed','Retailer has the app — pricing visible.'):emptyTL('phone','No app events found','Retailer has not installed the app yet.');
   else body=s.callDone?eventTL('Connected call logged','Call disposition saved.'):emptyTL('activity','No activity yet','Call activity will appear here.');
   return `<aside class="tlpane">
     <div class="tlh">${ic('reopen','sm')} TIMELINE <span class="x" onclick="setTLHide(true)">×</span></div>
     <div class="tltabs">
-      <a class="${tab==='notes'?'on':''}" onclick="setTLTab('notes')">${ic('note','sm')} Notes</a>
-      <a class="${tab==='activity'?'on':''}" onclick="setTLTab('activity')">${ic('activity','sm')} Activity</a>
+      <a class="${tab!=='app'?'on':''}" onclick="setTLTab('activity')">${ic('activity','sm')} Activity</a>
       <a class="${tab==='app'?'on':''}" onclick="setTLTab('app')">${ic('phone','sm')} App</a>
     </div>
     <div class="tlbody">${body}</div>
