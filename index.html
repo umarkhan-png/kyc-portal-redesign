@@ -97,8 +97,10 @@
   .vrow .val{font-weight:600;margin-top:2px;font-size:13.5px}
   .vrow .val .muted{color:var(--mut2);font-weight:500}
   /* header KYC action row + hover checklist */
-  .kactrow{border-top:1px solid var(--bd2);padding:11px 18px;display:flex;align-items:center;gap:10px}
-  .kbar{display:flex;align-items:center;gap:9px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
+  .kactrow{border-top:1px solid var(--bd2);padding:12px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .kactrow.pending{background:#eef1f4} .kactrow.approved{background:var(--green-bg)} .kactrow.rejected{background:var(--red-bg)}
+  .kmsg{font-weight:800;font-size:13.5px;display:inline-flex;gap:6px;align-items:center}
+  .kmsg.g{color:var(--green-d)} .kmsg.r{color:var(--red)}
   .apwrap{position:relative;display:inline-block}
   .popchk{display:none;position:absolute;right:0;top:calc(100% + 9px);width:290px;background:#fff;border:1px solid var(--bd);border-radius:12px;box-shadow:var(--shadow-lg);padding:12px 14px;z-index:30}
   .apwrap:hover .popchk{display:block}
@@ -318,7 +320,7 @@ function renderLead(){
           <span class="idp g">${cur.id} ${ic('copy','sm')}</span><span class="idp p">${cur.pii} ${ic('copy','sm')}</span><span class="idp n">${ic('phone','sm')} ${maskPhone(cur.phone)}</span><span class="idp n">${ic('pin','sm')} ${cur.state||'—'}</span></div></div>
       <div class="acts"><button class="btn pill sm">${ic('sync','sm')} Sync</button><button class="btn pill sm">${ic('chat','sm')} WhatsApp</button><button class="btn green pill" onclick="callPanel()">${ic('phone','sm')} Call Now</button></div>
     </div>
-    <div class="kactrow"><b style="font-size:13px;display:flex;align-items:center;gap:7px">${ic('verify')} KYC Verification</b>${kycActionBar()}</div>
+    <div class="kactrow ${s.verified?'approved':s.rejected?'rejected':'pending'}"><b style="font-size:13.5px;display:flex;align-items:center;gap:7px">${ic('verify')} KYC Verification</b>${kycActionBar()}</div>
     </div>
     <!-- pipeline -->
     <div class="card"><div class="bd">
@@ -329,7 +331,7 @@ function renderLead(){
     </div></div>
     <!-- tabs + retailer information -->
     <div class="card" style="padding:0">
-      <div class="tabs2"><a class="on">Retailer Information</a><a>Timeline</a><a>Profile &amp; Docs <span class="ct">5</span></a><a>Recordings <span class="ct">1</span></a><a>Address <span class="ct">0</span></a></div>
+      <div class="tabs2"><a class="on">Retailer Information</a><a>Timeline</a><a>Recordings <span class="ct">1</span></a><a>Address <span class="ct">0</span></a><a>Near Me</a><a>Notes</a><a>Follow up</a><a>WhatsApp</a><a>FAQs</a></div>
       <div class="bd" id="ri"></div>
     </div>`;
   renderRI();
@@ -356,20 +358,15 @@ function checks(){
     {label:'All '+REQ_DOCS.length+' required documents',ok:reqDone()===REQ_DOCS.length},
   ];
 }
-/* KYC traffic-light + approve (lives in the header card, at top) */
+/* KYC approve (lives in the header card, next to the title) */
 function kycActionBar(){
   const s=st[cur.id];
-  const status=s.verified?'approved':s.rejected?'rejected':'pending';
-  const pill=status==='approved'?`<span class="kstat g">${ic('check')} KYC Approved</span>`
-            :status==='rejected'?`<span class="kstat r">${ic('x')} KYC Rejected</span>`
-            :`<span class="kstat n">● Not Approved</span>`;
-  if(status!=='pending') return `<div class="kbar">${pill}<button class="btn sm" onclick="reopenKyc()">${ic('reopen','sm')} Re-open</button></div>`;
+  if(s.verified) return `<span class="kmsg g">${ic('check')} Approved &amp; handed off</span><button class="btn sm" onclick="reopenKyc()">${ic('reopen','sm')} Re-open</button>`;
+  if(s.rejected)  return `<span class="kmsg r">${ic('x')} Rejected</span><button class="btn sm" onclick="reopenKyc()">${ic('reopen','sm')} Re-open</button>`;
   const chk=checks(), ready=chk.every(c=>c.ok), pend=chk.filter(c=>!c.ok).length;
   const items=chk.map(c=>`<div class="ck ${c.ok?'ok':'no'}"><span class="i">${c.ok?'✓':'!'}</span>${c.label}</div>`).join('');
-  return `<div class="kbar">${pill}
-    <button class="btn red sm" onclick="rejectKyc()">${ic('x','sm')} Reject</button>
-    <span class="apwrap"><button class="btn greenbright lg" ${ready?'':'disabled'} onclick="approve()">${ic('check')} Approve &amp; Verify KYC</button>
-      <div class="popchk"><h5>${ready?'All checks passed — ready':pend+' pending check'+(pend>1?'s':'')+' for approval'}</h5>${items}</div></span></div>`;
+  return `<span class="apwrap"><button class="btn greenbright lg" ${ready?'':'disabled'} onclick="approve()">${ic('check')} Approve &amp; Verify KYC</button>
+      <div class="popchk"><h5>${ready?'All checks passed — ready':pend+' pending check'+(pend>1?'s':'')+' for approval'}</h5>${items}</div></span>`;
 }
 
 /* profile type — above Personal Information (as in live); edit-mode only */
