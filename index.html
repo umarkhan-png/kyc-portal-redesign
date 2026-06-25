@@ -390,10 +390,19 @@ function kycActionBar(){
   const s=st[cur.id];
   if(s.verified) return `<span class="kmsg g">${ic('check')} Approved &amp; handed off</span><button class="btn sm" onclick="reopenKyc()">${ic('reopen','sm')} Re-open</button>`;
   if(s.rejected)  return `<span class="kmsg r">${ic('x')} Rejected</span><button class="btn sm" onclick="reopenKyc()">${ic('reopen','sm')} Re-open</button>`;
+  const ready=checks().every(c=>c.ok);
+  return `<span class="apwrap" onmouseenter="refreshChecks(this)"><button class="btn greenbright lg" ${ready?'':'disabled'} onclick="approve()">${ic('check')} Approve KYC</button>
+      <div class="popchk">${checkPop()}</div></span>`;
+}
+/* live checklist used by the hover popover — always reflects the ACTUAL current state */
+function checkPop(){
   const chk=checks(), ready=chk.every(c=>c.ok), pend=chk.filter(c=>!c.ok).length;
   const items=chk.map(c=>`<div class="ck ${c.ok?'ok':'no'}"><span class="i">${c.ok?'✓':'!'}</span>${c.label}</div>`).join('');
-  return `<span class="apwrap"><button class="btn greenbright lg" ${ready?'':'disabled'} onclick="approve()">${ic('check')} Approve &amp; Verify KYC</button>
-      <div class="popchk"><h5>${ready?'All checks passed — ready':pend+' pending check'+(pend>1?'s':'')+' for approval'}</h5>${items}</div></span>`;
+  return `<h5>${ready?'All checks passed — ready to approve':pend+' pending check'+(pend>1?'s':'')+' for approval'}</h5>${items}`;
+}
+function refreshChecks(el){
+  const p=el.querySelector('.popchk'); if(p)p.innerHTML=checkPop();
+  const b=el.querySelector('button'); if(b)b.disabled=!checks().every(c=>c.ok);
 }
 
 /* ----- field/value helpers ----- */
@@ -454,11 +463,11 @@ function missing(){const b=st[cur.id].b,m=[];if(!b.ptype)m.push('profile type');
 function enterEdit(){const s=st[cur.id];
   if(!s.callDone){toast('Pehle ek connected call karein — uske baad hi details edit ho sakti hain.');callPanel();return;}
   if(!s.b.first&&cur.name&&!cur.name.startsWith('(new)')){const p=cur.name.split(' ');s.b.first=p[0];s.b.last=p.slice(1).join(' ');}if(!s.b.phone)s.b.phone=cur.phone;if(!s.b.state&&cur.state)s.b.state=cur.state;s.editing=true;renderRI();}
-function saveEdit(){st[cur.id].editing=false;flag();toast('Details saved','green');renderRI();}
-function cancelEdit(){st[cur.id].editing=false;renderRI();}
+function saveEdit(){st[cur.id].editing=false;flag();toast('Details saved','green');renderLead();}
+function cancelEdit(){st[cur.id].editing=false;renderLead();}
 function setB(k,v){st[cur.id].b[k]=v;flag();}
 function setDoc(k,f,v){const d=st[cur.id].docs;d[k]=d[k]||{};d[k][f]=v;flag();}
-function upDoc(k){const d=st[cur.id].docs;d[k]=d[k]||{};d[k].file='scan_'+k+'.jpg';flag();toast('Document uploaded & auto-saved','green');renderRI();}
+function upDoc(k){const d=st[cur.id].docs;d[k]=d[k]||{};d[k].file='scan_'+k+'.jpg';flag();toast('Document uploaded & auto-saved','green');renderLead();}
 function approve(){const s=st[cur.id];s.verified=true;s.rejected=false;s.editing=false;cur.status='Verified';cur.incomplete=false;toast('✓ KYC approved & verified — handed off to Retailer portal','green');renderLead();}
 function rejectKyc(){const s=st[cur.id];s.rejected=true;s.verified=false;s.editing=false;cur.status='KYC rejected';cur.incomplete=false;toast('✕ KYC rejected — visible & re-openable for a future attempt','green');renderLead();}
 function reopenKyc(){const s=st[cur.id];s.verified=false;s.rejected=false;cur.status='Incomplete';cur.incomplete=true;toast('Re-opened — status reset to pending','green');renderLead();}
