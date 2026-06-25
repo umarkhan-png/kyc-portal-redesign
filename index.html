@@ -47,11 +47,11 @@
   .btn:hover{background:#f9fafb}
   .btn.green{background:var(--green);border-color:var(--green);color:#fff}.btn.green:hover{background:var(--green-d)}
   .btn.greenbright{background:linear-gradient(180deg,var(--green-2),var(--green));border-color:var(--green);color:#fff;box-shadow:0 4px 13px rgba(26,164,92,.4)}
-  .btn.kapprove{background:linear-gradient(180deg,var(--green-2),var(--green));border:1.5px solid var(--green-d);color:#fff;font-size:14px;font-weight:800;padding:11px 26px;border-radius:999px;box-shadow:0 6px 18px rgba(26,164,92,.5);letter-spacing:.01em}
+  .btn.kapprove{background:linear-gradient(180deg,var(--green-2),var(--green));border:1px solid var(--green-d);color:#fff;font-size:13px;font-weight:800;padding:8px 18px;border-radius:999px;box-shadow:0 3px 12px rgba(26,164,92,.45)}
   .btn.kapprove:hover{background:var(--green-d)}
-  .btn.kapprove:not(:disabled){animation:kpulse 2.4s ease-in-out infinite}
-  @keyframes kpulse{0%,100%{box-shadow:0 6px 18px rgba(26,164,92,.5)}50%{box-shadow:0 6px 24px rgba(26,164,92,.85)}}
-  .btn.kapprove .ic svg{width:18px;height:18px;stroke-width:2.4}
+  .btn.kapprove:not(:disabled){animation:kpulse 2.6s ease-in-out infinite}
+  @keyframes kpulse{0%,100%{box-shadow:0 3px 12px rgba(26,164,92,.45)}50%{box-shadow:0 3px 17px rgba(26,164,92,.75)}}
+  .btn.kapprove .ic svg{stroke-width:2.4}
   .btn.red{color:var(--red);border-color:var(--red-bd);background:var(--red-bg)}
   .btn.pill{border-radius:999px}.btn.sm{padding:5px 10px;font-size:12px;border-radius:8px}
   .btn.lg{padding:13px 26px;font-size:15px;border-radius:12px;font-weight:700}
@@ -159,6 +159,8 @@
   .dvc.req{border-color:var(--red-bd);background:#fff8f8}
   .dvc .t{height:60px;border-radius:7px;background:#eef3ee;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--green-d);font-size:9.5px;overflow:hidden;margin-bottom:8px;text-align:center;padding:5px;gap:3px}
   .dvc .t.e{background:#f8fafb;border:1px dashed var(--bd);color:#aeb4bd}
+  .dvc .t.img{padding:0;background:#fff;height:76px}
+  .dvc .dimg{width:100%;height:100%;object-fit:cover;border-radius:7px;cursor:zoom-in;display:block}
   .dvc .t .ic svg{width:18px;height:18px}
   .dvc .t .fn{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .dvc .nm{font-size:12px;font-weight:600;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
@@ -444,9 +446,9 @@ function docsBlock(){
     return secBox('Licences &amp; Documents',extra,`<div class="hint" style="margin-bottom:10px">Images or PDF · max 10 MB</div><div class="doceg">${docEdit}</div>`);
   }
   const dv=DOCS.map(([k,label,req,exp,hasNum])=>{const d=s.docs[k]||{},ok=!!d.file;
-    const thumb=ok?`${ic('note')}<div class="fn">${d.file}</div>`:`${ic('upload')}<div>Not uploaded</div>`;
+    const thumb=ok?(d.img?`<img class="dimg" src="${d.img}" onclick="previewImg('${k}')" title="Click to enlarge">`:`${ic('note')}<div class="fn">${d.file}</div>`):`${ic('upload')}<div>Not uploaded</div>`;
     return `<div class="dvc ${ok?'ok':(req?'req':'op')}">
-      <div class="t ${ok?'':'e'}">${thumb}</div>
+      <div class="t ${ok&&d.img?'img':(ok?'':'e')}">${thumb}</div>
       <div class="nm">${label} ${req?'<span class="rq">Required</span>':'<span class="opn">Optional</span>'}</div>
       ${ok&&hasNum&&d.num?`<div class="mt">No: ${d.num}</div>`:''}
       ${ok&&exp&&d.exp?`<div class="mt">Exp: ${d.exp}</div>`:''}</div>`}).join('');
@@ -480,7 +482,15 @@ function saveEdit(){st[cur.id].editing=false;flag();toast('Details saved','green
 function cancelEdit(){st[cur.id].editing=false;renderLead();}
 function setB(k,v){st[cur.id].b[k]=v;flag();}
 function setDoc(k,f,v){const d=st[cur.id].docs;d[k]=d[k]||{};d[k][f]=v;flag();}
-function upDoc(k){const d=st[cur.id].docs;d[k]=d[k]||{};d[k].file='scan_'+k+'.jpg';flag();toast('Document uploaded & auto-saved','green');renderLead();}
+function docSampleSVG(label){
+  const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='320' height='200'><rect width='320' height='200' fill='#ffffff'/><rect width='320' height='36' fill='#1aa45c'/><text x='14' y='24' font-family='Segoe UI,Arial' font-size='13' fill='#fff' font-weight='bold'>GOVERNMENT OF INDIA</text><rect x='14' y='52' width='74' height='92' rx='5' fill='#eef2f4' stroke='#d3dbdf'/><circle cx='51' cy='86' r='19' fill='#c4ced4'/><path d='M33 128 q18 -26 36 0 z' fill='#c4ced4'/><text x='100' y='66' font-family='Segoe UI,Arial' font-size='12' fill='#222' font-weight='bold'>${label}</text><rect x='100' y='78' width='188' height='9' rx='3' fill='#e4e8eb'/><rect x='100' y='95' width='158' height='9' rx='3' fill='#e4e8eb'/><rect x='100' y='112' width='176' height='9' rx='3' fill='#e4e8eb'/><rect x='100' y='129' width='128' height='9' rx='3' fill='#e4e8eb'/><text x='14' y='176' font-family='Consolas,monospace' font-size='17' fill='#111' font-weight='bold' letter-spacing='4'>1234 5678 9012</text></svg>`;
+  return 'data:image/svg+xml,'+encodeURIComponent(svg);
+}
+function previewImg(k){const d=st[cur.id].docs[k]||{},m=DOCS.find(x=>x[0]===k);if(!d.img)return;
+  openModal(`<div class="mh">${ic('note')} ${m?m[1]:'Document'} <span class="hint" style="font-weight:600;margin-left:auto">${d.file||''}</span></div>
+    <div class="mb" style="text-align:center;background:#f3f5f7"><img src="${d.img}" style="max-width:100%;border:1px solid var(--bd);border-radius:10px;background:#fff"></div>`);
+}
+function upDoc(k){const d=st[cur.id].docs,m=DOCS.find(x=>x[0]===k);d[k]=d[k]||{};d[k].file='scan_'+k+'.jpg';d[k].img=docSampleSVG(m?m[1]:k);flag();toast('Document uploaded & auto-saved','green');renderLead();}
 function approve(){const s=st[cur.id];s.verified=true;s.rejected=false;s.editing=false;cur.status='Verified';cur.incomplete=false;toast('✓ KYC approved & verified — handed off to Retailer portal','green');renderLead();}
 function rejectKyc(){const s=st[cur.id];s.rejected=true;s.verified=false;s.editing=false;cur.status='KYC rejected';cur.incomplete=false;toast('✕ KYC rejected — visible & re-openable for a future attempt','green');renderLead();}
 function reopenKyc(){const s=st[cur.id];s.verified=false;s.rejected=false;cur.status='Incomplete';cur.incomplete=true;toast('Re-opened — status reset to pending','green');renderLead();}
