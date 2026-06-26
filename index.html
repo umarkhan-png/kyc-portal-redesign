@@ -455,7 +455,21 @@ function renderRI(){
             ? `<button class="btn editbtn" onclick="enterEdit()">${ic('edit','sm')} Edit all details</button><span class="roflag">${ic('verify','sm')} Read-only — click Edit to make changes</span>`
             : `<span class="tip" data-tip="Connect a call first to edit"><button class="btn editbtn" disabled>${ic('edit','sm')} Edit all details</button></span><span class="roflag">Read-only</span>`)}
       </div>`;
-  document.getElementById('ri').innerHTML = slim + profileTypeSec() + docsBlock() + personalBlock() + businessBlock();
+  document.getElementById('ri').innerHTML = slim + profileTypeSec() + farmerBlock() + docsBlock() + personalBlock() + businessBlock();
+}
+/* Farmer-only optional section — appears when Profile Type = Farmer */
+function farmerBlock(){
+  const s=st[cur.id], b=s.b;
+  if(b.ptype!=='Farmer') return '';
+  const FREQ=['Seasonal','Monthly','Quarterly','Yearly','Other'];
+  const optTag=` <span style="font-weight:500;color:var(--mut2);font-size:11px;margin-left:6px">(optional)</span>`;
+  const inner=s.editing
+    ? `<div class="grid3">${ef('Farmer Name','fname','Full name')}${ef('Village','village')}${ef('District','district')}</div>
+       <div class="grid3" style="margin-top:13px">${ef('Farmer Address','faddr','Full address')}${es('State','fstate',STATES)}<div></div></div>
+       <div class="grid3" style="margin-top:13px">${ef('Land holding','land','e.g. 5 acres')}${ef('Crops cultivated','crops','e.g. Wheat, Soybean')}${ef('Machinery owned','machinery','e.g. Tractor, Pump set')}</div>
+       <div class="grid2" style="margin-top:13px">${ef('Expected agricultural input purchases','expbuy','e.g. ₹50,000 per season')}${es('Purchase frequency','freq',FREQ)}</div>`
+    : `<div class="vgrid">${vrow('Farmer Name',b.fname)}${vrow('Village',b.village)}${vrow('District',b.district)}${vrow('Farmer Address',b.faddr)}${vrow('State',b.fstate)}${vrow('Land holding',b.land)}${vrow('Crops cultivated',b.crops)}${vrow('Machinery owned',b.machinery)}${vrow('Expected input purchases',b.expbuy)}${vrow('Purchase frequency',b.freq)}</div>`;
+  return riSec('Farmer Details',optTag,inner);
 }
 
 /* mandatory checks for approval (shown on hover over Approve) */
