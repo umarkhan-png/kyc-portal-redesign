@@ -157,6 +157,12 @@
   .kstat.n{background:#f1f3f5;color:#6b7280;border-color:#dde1e6}
   .kstat.g{background:var(--green-bg);color:var(--green-d);border-color:var(--green)}
   .kstat.r{background:var(--red-bg);color:var(--red);border-color:var(--red-bd)}
+  /* flat read-only view section (distinct from the boxed edit form) */
+  .vsec{padding:15px 2px 16px;border-bottom:1px solid var(--bd2)}
+  .vsec:first-of-type{padding-top:2px}
+  .vsec:last-child{border-bottom:0}
+  .vsh{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--green-d);margin-bottom:12px}
+  .roflag{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--mut);background:#f3f5f7;border:1px solid var(--bd2);border-radius:999px;padding:6px 11px}
   /* compact read-only view */
   .vpanel{border:1px solid var(--bd2);border-radius:12px;padding:2px 16px 14px;background:#fcfdfe}
   .vhdr{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--green-d);padding:13px 0 9px;border-bottom:1px solid var(--bd2);margin-bottom:11px;display:flex;align-items:center;gap:7px}
@@ -446,8 +452,8 @@ function renderRI(){
       ${s.editing
         ? `<button class="btn editbtn" onclick="saveEdit()">${ic('save','sm')} Save details</button><button class="btn sm" onclick="cancelEdit()">Cancel</button>`
         : (callOk
-            ? `<button class="btn editbtn" onclick="enterEdit()">${ic('edit','sm')} Edit all details</button>`
-            : `<span class="tip" data-tip="Connect a call first to edit"><button class="btn editbtn" disabled>${ic('edit','sm')} Edit all details</button></span>`)}
+            ? `<button class="btn editbtn" onclick="enterEdit()">${ic('edit','sm')} Edit all details</button><span class="roflag">${ic('verify','sm')} Read-only — click Edit to make changes</span>`
+            : `<span class="tip" data-tip="Connect a call first to edit"><button class="btn editbtn" disabled>${ic('edit','sm')} Edit all details</button></span><span class="roflag">Read-only</span>`)}
       </div>`;
   document.getElementById('ri').innerHTML = slim + profileTypeSec() + docsBlock() + personalBlock() + businessBlock();
 }
@@ -489,6 +495,8 @@ function ef(lab,key,ph,req){const b=st[cur.id].b;return `<div class="field"><lab
 function es(lab,key,opts,req){const b=st[cur.id].b;return `<div class="field"><label class="${req?'req':''}">${lab}</label><select onchange="setB('${key}',this.value)">${['<option value="">— Select —</option>'].concat(opts.map(o=>`<option ${b[key]===o?'selected':''}>${o}</option>`)).join('')}</select></div>`;}
 function vrow(l,v){return `<div class="cv"><span class="cl">${l}</span><span class="cvv">${v||'<span class="muted">—</span>'}</span></div>`;}
 function secBox(title,extra,inner){return `<div class="sec"><div class="sh">${title}${extra||''}</div><div class="sb">${inner}</div></div>`;}
+/* edit → boxed form section; view → flat read-only section (clearly not editable) */
+function riSec(title,extra,inner){return st[cur.id].editing?secBox(title,extra,inner):`<div class="vsec"><div class="vsh">${title}${extra||''}</div>${inner}</div>`;}
 
 /* Order: Profile Type → Licences & Documents → Personal Information → Business Information */
 function profileTypeSec(){
@@ -496,12 +504,12 @@ function profileTypeSec(){
   const inner=s.editing
     ? `<div class="grid3"><div class="field"><label class="req">Profile / Customer type</label><select onchange="setB('ptype',this.value);renderLead()">${['<option value="">— Select —</option>'].concat(types.map(t=>`<option ${b.ptype===t?'selected':''}>${t}</option>`)).join('')}</select></div></div>`
     : `<div class="vgrid">${vrow('Profile / Customer type',b.ptype)}</div>`;
-  return secBox('Profile Type','',inner);
+  return riSec('Profile Type','',inner);
 }
 function docsBlock(){
   const s=st[cur.id], b=s.b;
   // documents appear only after a profile type is selected
-  if(!b.ptype) return secBox('Licences &amp; Documents','',`<div class="docgate">${ic('note')}<div><b>Select a Profile Type first</b><div class="hint">Required documents will appear here once the profile type is chosen.</div></div></div>`);
+  if(!b.ptype) return riSec('Licences &amp; Documents','',`<div class="docgate">${ic('note')}<div><b>Select a Profile Type first</b><div class="hint">Required documents will appear here once the profile type is chosen.</div></div></div>`);
   const extra=` <span style="font-weight:500;color:var(--mut2);font-size:11px;margin-left:6px">${reqDone()}/${REQ_DOCS.length} required uploaded</span>`;
   if(s.editing){
     const docEdit=DOCS.map(([k,label,req,exp,hasNum,nph])=>{const d=s.docs[k]||{},ok=!!d.file;
@@ -510,7 +518,7 @@ function docsBlock(){
         <div class="upl ${ok?'':(req?'r':'')}" onclick="upDoc('${k}')">${ok?ic('check','sm')+' '+d.file:ic('upload','sm')+' Upload'}</div>
         ${hasNum?`<div class="field" style="margin-top:6px"><label class="dlab">${nph||'Document number'}</label><input placeholder="${nph||'Document number'}" value="${d.num||''}" oninput="setDoc('${k}','num',this.value)"></div>`:''}
         ${exp?`<div class="field" style="margin-top:6px"><label class="dlab">Expiry date</label><input type="date" value="${d.exp||''}" oninput="setDoc('${k}','exp',this.value)"></div>`:''}</div>`}).join('');
-    return secBox('Licences &amp; Documents',extra,`<div class="hint" style="margin-bottom:10px">Images or PDF · max 10 MB</div><div class="doceg">${docEdit}</div>`);
+    return riSec('Licences &amp; Documents',extra,`<div class="hint" style="margin-bottom:10px">Images or PDF · max 10 MB</div><div class="doceg">${docEdit}</div>`);
   }
   const dv=DOCS.map(([k,label,req,exp,hasNum])=>{const d=s.docs[k]||{},ok=!!d.file;
     const thumb=ok?(d.img?`<img class="dimg" src="${d.img}" onclick="previewImg('${k}')" title="Click to enlarge">`:`${ic('note')}<div class="fn">${d.file}</div>`):`${ic('upload')}<div>Not uploaded</div>`;
@@ -519,14 +527,14 @@ function docsBlock(){
       <div class="nm">${label} ${req?'<span class="rq">Required</span>':'<span class="opn">Optional</span>'}</div>
       ${ok&&hasNum&&d.num?`<div class="mt">No: ${d.num}</div>`:''}
       ${ok&&exp&&d.exp?`<div class="mt">Exp: ${d.exp}</div>`:''}</div>`}).join('');
-  return secBox('Licences &amp; Documents',extra,`<div class="dvgrid">${dv}</div>`);
+  return riSec('Licences &amp; Documents',extra,`<div class="dvgrid">${dv}</div>`);
 }
 function personalBlock(){
   const s=st[cur.id], b=s.b;
   const inner=s.editing
     ? `<div class="grid3">${ef('First Name','first','First name',true)}${ef('Last Name','last','Last name')}${ef('Phone','phone',cur.phone,true)}${ef('Alt Phone','alt','Alternate number')}${ef('Email','email','name@email.com')}${es('Language','lang',LANGS,true)}</div>`
     : `<div class="vgrid">${vrow('First Name',b.first)}${vrow('Last Name',b.last)}${vrow('Phone',b.phone||cur.phone)}${vrow('Alt Phone',b.alt)}${vrow('Email',b.email)}${vrow('Language',b.lang)}</div>`;
-  return secBox('Personal Information','',inner);
+  return riSec('Personal Information','',inner);
 }
 function businessBlock(){
   const s=st[cur.id], b=s.b;
@@ -535,7 +543,7 @@ function businessBlock(){
        <div class="grid3" style="margin-bottom:14px">${ef('Shop address','addr','Full address',true)}${ef('City','city')}${ef('Pincode','pin')}</div>
        <div class="grid3">${es('State','state',STATES,true)}${ef('Country','country','India')}<div></div></div>`
     : `<div class="vgrid">${vrow('Shop name',b.shop)}${vrow('Shop type',b.shoptype)}${vrow('PAN number',b.pan)}${vrow('Shop address',b.addr)}${vrow('City',b.city)}${vrow('Pincode',b.pin)}${vrow('State',b.state)}${vrow('Country',b.country||'India')}</div>`;
-  return secBox('Business Information','',inner);
+  return riSec('Business Information','',inner);
 }
 
 /* ---- state ---- */
