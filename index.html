@@ -452,8 +452,8 @@ function renderRI(){
       ${s.editing
         ? `<button class="btn editbtn" onclick="saveEdit()">${ic('save','sm')} Save details</button><button class="btn sm" onclick="cancelEdit()">Cancel</button>`
         : (callOk
-            ? `<button class="btn editbtn" onclick="enterEdit()">${ic('edit','sm')} Edit all details</button><span class="roflag">${ic('verify','sm')} Read-only — click Edit to make changes</span>`
-            : `<span class="tip" data-tip="Connect a call first to edit"><button class="btn editbtn" disabled>${ic('edit','sm')} Edit all details</button></span><span class="roflag">Read-only</span>`)}
+            ? `<button class="btn editbtn" onclick="enterEdit()">${ic('edit','sm')} Edit all details</button>`
+            : `<span class="tip" data-tip="Connect a call first to edit"><button class="btn editbtn" disabled>${ic('edit','sm')} Edit all details</button></span>`)}
       </div>`;
   document.getElementById('ri').innerHTML = slim + profileTypeSec() + farmerBlock() + docsBlock() + personalBlock() + businessBlock();
 }
